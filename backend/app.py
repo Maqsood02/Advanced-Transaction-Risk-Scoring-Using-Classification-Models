@@ -133,14 +133,40 @@ def login():
         
         db.add_audit_log("Successful login", username, "success")
         
-        # Email notification simulation
+        # Email notification sending
         email_to = user.get("email", "")
-        print(f"[SIMULATION] Sending login alert email to {username} ({email_to if email_to else 'no email provided'})...")
-        try:
-            with open("mail_notifications.log", "a") as f:
-                f.write(f"[{datetime.datetime.now().isoformat()}] User logged in: {username} ({email_to})\n")
-        except Exception:
-            pass
+        if email_to:
+            import smtplib
+            from email.mime.text import MIMEText
+            smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+            smtp_port = int(os.environ.get("SMTP_PORT", 587))
+            smtp_user = os.environ.get("SMTP_USER", "")
+            smtp_password = os.environ.get("SMTP_PASSWORD", "")
+            
+            if smtp_user and smtp_password:
+                try:
+                    msg = MIMEText(f"Hello {user['username']},\n\nA login was just detected on your Transaction Risk Scoring account at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\n\nIf this was not you, please secure your account immediately.")
+                    msg['Subject'] = 'Login Notification Alert'
+                    msg['From'] = smtp_user
+                    msg['To'] = email_to
+                    
+                    server = smtplib.SMTP(smtp_server, smtp_port)
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
+                    server.quit()
+                    print(f"[SUCCESS] Email successfully sent via SMTP to {email_to}")
+                except Exception as e:
+                    print(f"[ERROR] Failed to send email: {e}")
+            else:
+                print(f"[SIMULATION] Email alert to {email_to} (SMTP credentials not set)")
+                
+        if not os.environ.get("VERCEL"):
+            try:
+                with open("mail_notifications.log", "a") as f:
+                    f.write(f"[{datetime.datetime.now().isoformat()}] User logged in: {username} ({email_to})\n")
+            except Exception:
+                pass
             
         return jsonify({
             "token": token,
@@ -353,8 +379,17 @@ def admin_upload_dataset(current_user):
             l_risk = float(r.get("location_risk", 0.1))
             
             try:
-                model = joblib.load(os.path.join(os.path.dirname(__file__), "model.pkl"))
-                score = float(model.predict_proba([[amt, hr, d_risk, l_risk]])[0][1])
+                if os.environ.get("VERCEL") or not os.access(os.path.dirname(__file__), os.W_OK):
+                    m_path = "/tmp/model.pkl"
+                else:
+                    m_path = os.path.join(os.path.dirname(__file__), "model.pkl")
+
+                if os.path.exists(m_path):
+                    model = joblib.load(m_path)
+                    score = float(model.predict_proba([[amt, hr, d_risk, l_risk]])[0][1])
+                else:
+                    score = 0.25 + 0.3 * (amt > 500) + 0.15 * d_risk + 0.3 * (l_risk > 0.6)
+                    score = min(max(score, 0.0), 1.0)
             except Exception:
                 score = 0.25 + 0.3 * (amt > 500) + 0.15 * d_risk + 0.3 * (l_risk > 0.6)
                 score = min(max(score, 0.0), 1.0)
