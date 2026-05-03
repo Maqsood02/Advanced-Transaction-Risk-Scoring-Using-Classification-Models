@@ -102,12 +102,39 @@ def register():
     hashed_pwd = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     new_user = {
         "username": username,
-        "email": email,
+        "email": email or (username if "@" in username else ""),
         "password": hashed_pwd,
         "role": role
     }
     db.add_user(new_user)
     db.add_audit_log("User registration", username, "success")
+    
+    # Send registration notification email
+    email_to = new_user.get("email", "")
+    if email_to:
+        import smtplib
+        from email.mime.text import MIMEText
+        smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = int(os.environ.get("SMTP_PORT", 587))
+        smtp_user = os.environ.get("SMTP_USER", "")
+        smtp_password = os.environ.get("SMTP_PASSWORD", "")
+        
+        if smtp_user and smtp_password:
+            try:
+                msg = MIMEText(f"Hello {username},\n\nWelcome to ATRSC System! Your account registration was successful.\n\nThank you for signing up.")
+                msg['Subject'] = 'Welcome to ATRSC System'
+                msg['From'] = smtp_user
+                msg['To'] = email_to
+                
+                server = smtplib.SMTP(smtp_server, smtp_port)
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+                server.quit()
+                print(f"[SUCCESS] Welcome email sent to {email_to}")
+            except Exception as e:
+                print(f"[ERROR] Failed to send welcome email: {e}")
+                
     return jsonify({"message": "User successfully registered", "username": username}), 201
 
 @app.route('/api/login', methods=['POST'])
@@ -135,6 +162,9 @@ def login():
         
         # Email notification sending
         email_to = user.get("email", "")
+        if not email_to and "@" in user.get("username", ""):
+            email_to = user["username"]
+
         if email_to:
             import smtplib
             from email.mime.text import MIMEText
