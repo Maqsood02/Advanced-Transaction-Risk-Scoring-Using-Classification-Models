@@ -1,0 +1,272 @@
+// Global Variables and states
+let userToken = localStorage.getItem('token') || '';
+let userRole = localStorage.getItem('role') || '';
+let currentUsername = localStorage.getItem('username') || '';
+
+const API_BASE = window.location.origin;
+
+document.addEventListener('DOMContentLoaded', () => {
+    initView();
+});
+
+// Switch visual Auth Tabs
+function switchAuthTab(tab) {
+    const loginWrapper = document.getElementById('login-form-wrapper');
+    const registerWrapper = document.getElementById('register-form-wrapper');
+
+    if (tab === 'login') {
+        loginWrapper.style.display = 'block';
+        registerWrapper.style.display = 'none';
+    } else {
+        loginWrapper.style.display = 'none';
+        registerWrapper.style.display = 'block';
+    }
+}
+
+// Global initialization router handler
+function initView() {
+    const authPanel = document.getElementById('auth-panel');
+    const dashboardPanel = document.getElementById('dashboard-panel');
+    const navActions = document.getElementById('nav-actions');
+
+    if (!userToken) {
+        // Logged out View setup
+        authPanel.style.display = 'block';
+        dashboardPanel.style.display = 'none';
+        navActions.innerHTML = `
+            <span style="color: var(--text-secondary); font-size: 0.9rem;">Secured System</span>
+        `;
+    } else {
+        // Logged In View setup
+        authPanel.style.display = 'none';
+        dashboardPanel.style.display = 'block';
+        navActions.innerHTML = `
+            <span style="color: var(--text-primary); font-size: 0.95rem; font-weight:600; display:flex; align-items:center; gap:8px">
+                <ion-icon name="person-circle-outline"></ion-icon> ${currentUsername}
+            </span>
+            <button class="btn btn-outline" onclick="handleLogout()" style="padding: 6px 14px; font-size:0.85rem">Sign Out</button>
+        `;
+
+        // Load specific dashboard parts or setup buttons
+        if (userRole === 'admin') {
+            document.getElementById('admin-redirect-btn-wrapper').innerHTML = `
+                <a href="admin.html" class="btn btn-primary">
+                    <ion-icon name="speedometer-outline"></ion-icon> Open Admin Dashboard
+                </a>
+            `;
+        } else {
+            document.getElementById('admin-redirect-btn-wrapper').innerHTML = ``;
+        }
+
+        fetchTransactions();
+    }
+}
+
+// Alert utility function
+function showNotification(msg, type = 'success') {
+    const cont = document.getElementById('alert-container');
+    const alertBox = document.createElement('div');
+    alertBox.className = `alert-popup glass level-${type === 'success' ? 'Low' : type === 'warning' ? 'Medium' : 'High'}`;
+    alertBox.style.background = type === 'success' ? '#ecfdf5' : type === 'warning' ? '#fffbeb' : '#fef2f2';
+    alertBox.style.color = type === 'success' ? 'var(--success-color)' : type === 'warning' ? 'var(--warning-color)' : 'var(--danger-color)';
+    alertBox.innerHTML = `
+        <ion-icon name="${type === 'success' ? 'checkmark-circle-outline' : type === 'warning' ? 'alert-outline' : 'close-circle-outline'}"></ion-icon>
+        <span>${msg}</span>
+    `;
+    cont.appendChild(alertBox);
+    setTimeout(() => alertBox.remove(), 4000);
+}
+
+// Action Handler - Authentication Register
+async function handleRegister(e) {
+    e.preventDefault();
+    const username = document.getElementById('reg-username').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value.trim();
+
+    try {
+        const response = await fetch(`${API_BASE}/api/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password, role: 'user' })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to complete registration');
+        }
+
+        showNotification('Registered successfully! Now sign in.');
+        switchAuthTab('login');
+    } catch (err) {
+        showNotification(err.message, 'danger');
+    }
+}
+
+// Action Handler - Authentication Login
+async function handleLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+
+    try {
+        const response = await fetch(`${API_BASE}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to login');
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        localStorage.setItem('username', data.username);
+
+        userToken = data.token;
+        userRole = data.role;
+        currentUsername = data.username;
+
+        showNotification(`Welcome back, ${data.username}!`);
+        
+        // Auto-redirect admin directly to admin dashboard
+        if (data.role === 'admin') {
+            window.location.href = 'admin.html';
+        } else {
+            initView();
+        }
+    } catch (err) {
+        showNotification(err.message, 'danger');
+    }
+}
+
+// Action Handler - Sign Out
+function handleLogout() {
+    localStorage.clear();
+    userToken = '';
+    userRole = '';
+    currentUsername = '';
+    window.location.reload();
+}
+
+// Transaction list loader & API consumer
+async function fetchTransactions() {
+    if (!userToken) return;
+    const filterLevel = document.getElementById('filter-level').value;
+
+    try {
+        const response = await fetch(`${API_BASE}/api/transactions?risk_level=${filterLevel}`, {
+            headers: { 'Authorization': `Bearer ${userToken}` }
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load evaluation history');
+        }
+
+        renderTransactionsTable(data);
+        computeUserMetrics(data);
+    } catch (err) {
+        showNotification(err.message, 'danger');
+    }
+}
+
+// DOM Rendering function for Transactions
+function renderTransactionsTable(transactions) {
+    const tbody = document.querySelector('#tx-table tbody');
+    tbody.innerHTML = '';
+
+    if (!transactions || transactions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; color:var(--text-secondary); padding: 30px;">
+                    No transactions evaluated yet.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    transactions.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>$${parseFloat(t.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+            <td>${t.hour_of_day || 0}:00</td>
+            <td>${t.location || 'Encrypted'}</td>
+            <td>${t.device_name || 'Encrypted'}</td>
+            <td><strong style="color:var(--primary-color)">${t.risk_score}</strong></td>
+            <td>
+                <span class="badge level-${t.risk_level}">${t.risk_level} Risk</span>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Update dashboard metrics numbers
+function computeUserMetrics(transactions) {
+    if (!transactions) return;
+    const total = transactions.length;
+    const high = transactions.filter(t => t.risk_level === 'High').length;
+    const rate = total > 0 ? ((high / total) * 100).toFixed(1) : '0';
+
+    document.getElementById('user-total-tx').innerText = total;
+    document.getElementById('user-high-tx').innerText = high;
+    document.getElementById('user-risk-rate').innerText = `${rate}%`;
+}
+
+// Add transaction and submit prediction
+async function handlePrediction(e) {
+    e.preventDefault();
+    const amount = document.getElementById('tx-amount').value;
+    const hour_of_day = document.getElementById('tx-hour').value;
+    const device_risk = document.getElementById('tx-device-risk').value;
+    const location_risk = document.getElementById('tx-loc-risk').value;
+    const location = document.getElementById('tx-location').value;
+    const device_name = document.getElementById('tx-device-name').value;
+
+    const btn = document.getElementById('btn-predict');
+    btn.disabled = true;
+    btn.innerText = 'Analyzing with ML Model...';
+
+    try {
+        const response = await fetch(`${API_BASE}/api/predict`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${userToken}`
+            },
+            body: JSON.stringify({ amount, hour_of_day, device_risk, location_risk, location, device_name })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to complete prediction');
+        }
+
+        showNotification('Transaction score predicted and recorded!');
+        
+        // Output prediction visualization
+        const resultPanel = document.getElementById('prediction-result');
+        document.getElementById('pred-res-score').innerText = parseFloat(data.score).toFixed(4);
+        
+        const badge = document.getElementById('pred-res-level-badge');
+        badge.className = `prediction-badge level-${data.risk_level}`;
+        badge.innerText = `${data.risk_level} Risk`;
+        resultPanel.style.display = 'block';
+
+        // Clear only non-reusable inputs
+        document.getElementById('tx-amount').value = '';
+        document.getElementById('tx-location').value = '';
+
+        // Reload data
+        fetchTransactions();
+    } catch (err) {
+        showNotification(err.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Run Machine Learning Prediction';
+    }
+}

@@ -1,0 +1,173 @@
+{
+  "users": [
+    {
+      "username": "user",
+      "password": "$2b$12$jsush1NpyDM7q1Fhba08aOQJnxsmHBQwczWkrl1lGgMIrAOlQGd.O",
+      "role": "user"
+    },
+    {
+      "username": "Maqsood",
+      "email": "maqsoodmd.ac.in@gmail.com",
+      "password": "$2b$12$ULTCG7DJ7BH8ye0wkULql.DwCEF5PsytnRRVPDjx7sgOG29d6IIya",
+      "role": "user"
+    },
+    {
+      "username": "admin",
+      "password": "$2b$12$9.OwB.PB6DmpAKRwmJsEt.VHbSTB/tdQrLj5/MwOkrlb3.vFqQW7S",
+      "role": "admin"
+    }
+  ],
+  "transactions": [],
+  "audit_logs": [
+    {
+      "action": "User registration",
+      "username": "maqsoodmd.ac.in@gmail.com",
+      "status": "success",
+      "timestamp": "2026-05-03T13:36:14.232513"
+    },
+    {
+      "action": "Successful login",
+      "username": "maqsoodmd.ac.in@gmail.com",
+      "status": "success",
+      "timestamp": "2026-05-03T13:36:24.317152"
+    },
+    {
+      "action": "Inference run: risk=High, score=0.73",
+      "username": "maqsoodmd.ac.in@gmail.com",
+      "status": "success",
+      "timestamp": "2026-05-03T13:37:44.380250"
+    },
+    {
+      "action": "Successful login",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T13:44:01.570629"
+    },
+    {
+      "action": "Successful login",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T13:44:03.110974"
+    },
+    {
+      "action": "Admin deleted user maqsoodmd.ac.in@gmail.com",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T13:44:25.910549"
+    },
+    {
+      "action": "Admin deleted user user",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T13:44:27.957288"
+    },
+    {
+      "action": "Admin retrained model using lr",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T13:45:18.865557"
+    },
+    {
+      "action": "Admin wiped all transaction datasets",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T13:45:51.543519"
+    },
+    {
+      "action": "Failed login attempt",
+      "username": "admin",
+      "status": "failed",
+      "timestamp": "2026-05-03T13:57:25.432502"
+    },
+    {
+      "action": "Successful login",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T13:58:13.785854"
+    },
+    {
+      "action": "Successful login",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T13:59:12.214377"
+    },
+    {
+      "action": "User registration",
+      "username": "Maqsood",
+      "status": "success",
+      "timestamp": "2026-05-03T19:49:05.114229"
+    },
+    {
+      "action": "Successful login",
+      "username": "Maqsood",
+      "status": "success",
+      "timestamp": "2026-05-03T19:49:26.541456"
+    },
+    {
+      "action": "Failed login attempt",
+      "username": "admin",
+      "status": "failed",
+      "timestamp": "2026-05-03T19:54:03.671467"
+    },
+    {
+      "action": "Successful login",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T19:54:10.231251"
+    },
+    {
+      "action": "Failed login attempt",
+      "username": "admin",
+      "status": "failed",
+      "timestamp": "2026-05-03T20:03:56.982793"
+    },
+    {
+      "action": "Failed login attempt",
+      "username": "admin",
+      "status": "failed",
+      "timestamp": "2026-05-03T20:04:07.267659"
+    },
+    {
+      "action": "Admin successfully reset their account password",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T20:04:20.910852"
+    },
+    {
+      "action": "Failed login attempt",
+      "username": "admin",
+      "status": "failed",
+      "timestamp": "2026-05-03T20:04:33.160666"
+    },
+    {
+      "action": "Failed login attempt",
+      "username": "admin",
+      "status": "failed",
+      "timestamp": "2026-05-03T20:05:02.216836"
+    },
+    {
+      "action": "Failed login attempt",
+      "username": "admin",
+      "status": "failed",
+      "timestamp": "2026-05-03T20:05:08.160345"
+    },
+    {
+      "action": "Admin successfully reset their account password",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T20:05:20.508716"
+    },
+    {
+      "action": "Successful login",
+      "username": "user",
+      "status": "success",
+      "timestamp": "2026-05-03T20:05:23.185205"
+    },
+    {
+      "action": "Successful login",
+      "username": "admin",
+      "status": "success",
+      "timestamp": "2026-05-03T20:06:29.970277"
+    }
+  ]
+}

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATRSC System - Administrator Portal</title>
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Chart.js for data visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Ionicons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <style>
+        .active-sub-tab {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%) !important;
+            color: #ffffff !important;
+            border-color: transparent !important;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Notification system popups -->
+    <div id="alert-container"></div>
+
+    <!-- Header / Navbar -->
+    <header>
+        <div class="brand">
+            <ion-icon name="shield-checkmark-outline"></ion-icon>
+            <span class="brand-text">ADMIN PORTAL</span>
+        </div>
+        <div class="nav-links">
+            <a href="index.html" class="btn btn-outline" style="padding: 8px 16px;">
+                <ion-icon name="arrow-back-outline"></ion-icon> Workspace
+            </a>
+            <button class="btn btn-outline" onclick="handleLogout()" style="padding: 8px 16px;">Sign Out</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+
+        <!-- Top Navigation / Sections Tabs -->
+        <div class="tab-nav">
+            <button class="tab-link active" onclick="switchAdminTab('metrics')">Analytics & Models</button>
+            <button class="tab-link" onclick="switchAdminTab('users')">User Management</button>
+            <button class="tab-link" onclick="switchAdminTab('audit')">System Audit Logs</button>
+        </div>
+
+        <!-- ================= ANALYTICS / METRICS / MODELS TAB ================= -->
+        <div id="tab-metrics" class="admin-panel-tab">
+
+            <!-- Premium Feature Category Sub-Navigation -->
+            <div style="display: flex; gap: 12px; margin-bottom: 35px; flex-wrap: wrap; justify-content: center; background: #ffffff; padding: 12px; border-radius: 14px; border: 1px solid var(--card-border); box-shadow: 0 4px 12px rgba(15,23,42,0.02);">
+                <button class="btn btn-outline active-sub-tab" id="sub-nav-btn-visuals" onclick="switchAnalyticsSection('visuals', this)" style="padding: 10px 22px; font-weight: 600; border-radius: 10px;">
+                    <ion-icon name="stats-chart-outline"></ion-icon> Visual Analytics
+                </button>
+                <button class="btn btn-outline" id="sub-nav-btn-train" onclick="switchAnalyticsSection('train', this)" style="padding: 10px 22px; font-weight: 600; border-radius: 10px;">
+                    <ion-icon name="hardware-chip-outline"></ion-icon> Retrain Model
+                </button>
+                <button class="btn btn-outline" id="sub-nav-btn-upload" onclick="switchAnalyticsSection('upload', this)" style="padding: 10px 22px; font-weight: 600; border-radius: 10px;">
+                    <ion-icon name="cloud-upload-outline"></ion-icon> Upload & Data Mgmt
+                </button>
+                <button class="btn btn-outline" id="sub-nav-btn-reset" onclick="switchAnalyticsSection('reset', this)" style="padding: 10px 22px; font-weight: 600; border-radius: 10px;">
+                    <ion-icon name="key-outline"></ion-icon> Admin Reset
+                </button>
+            </div>
+
+            <!-- Category SECTION: VISUALS -->
+            <div id="analytics-section-visuals" class="analytics-sub-section">
+                <!-- Dynamic metrics cards row -->
+                <div class="metrics-grid">
+                    <div class="metric-card glass">
+                        <div class="metric-card-header">
+                            <span class="metric-label">System Accuracy</span>
+                            <ion-icon name="checkmark-done-circle-outline" class="metric-icon" style="color:var(--success-color)"></ion-icon>
+                        </div>
+                        <span class="metric-value" id="sys-accuracy">76.8%</span>
+                    </div>
+                    <div class="metric-card glass">
+                        <div class="metric-card-header">
+                            <span class="metric-label">Precision & Recall</span>
+                            <ion-icon name="git-compare-outline" class="metric-icon" style="color:var(--primary-color)"></ion-icon>
+                        </div>
+                        <span class="metric-value" style="font-size:1.6rem; margin-top:5px;" id="sys-p-r">30.6% / 27.5%</span>
+                    </div>
+                    <div class="metric-card glass">
+                        <div class="metric-card-header">
+                            <span class="metric-label">Model AUC Score</span>
+                            <ion-icon name="trending-up-outline" class="metric-icon" style="color:var(--accent-color)"></ion-icon>
+                        </div>
+                        <span class="metric-value" id="sys-auc">0.71</span>
+                    </div>
+                    <div class="metric-card glass">
+                        <div class="metric-card-header">
+                            <span class="metric-label">High-Risk Predicted</span>
+                            <ion-icon name="alert-circle-outline" class="metric-icon" style="color:var(--danger-color)"></ion-icon>
+                        </div>
+                        <span class="metric-value" id="sys-fraud" style="color:var(--danger-color);">0%</span>
+                    </div>
+                </div>
+
+                <!-- Graphs and Chart Row Grid -->
+                <div class="admin-grid">
+                    <div class="chart-card glass">
+                        <h4 class="card-title">ROC Curve & AUC Progress</h4>
+                        <div class="chart-container">
+                            <canvas id="rocCurveChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass">
+                        <h4 class="card-title">Fraud Risk Distribution</h4>
+                        <div class="chart-container">
+                            <canvas id="riskPieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-grid">
+                    <div class="chart-card glass">
+                        <h4 class="card-title">Feature Importance Analysis</h4>
+                        <div class="chart-container">
+                            <canvas id="importanceChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass">
+                        <h4 class="card-title">Prediction Confusion Matrix</h4>
+                        <div class="chart-container">
+                            <canvas id="matrixChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category SECTION: TRAIN -->
+            <div id="analytics-section-train" class="analytics-sub-section" style="display: none;">
+                <div class="dashboard-grid">
+                    <div class="form-card glass">
+                        <h3 class="card-title">
+                            <ion-icon name="hardware-chip-outline" style="color:var(--primary-color);"></ion-icon>
+                            Retrain Model
+                        </h3>
+                        <form id="train-form" onsubmit="handleTrain(event)">
+                            <div class="form-group">
+                                <label for="algorithm-selector">Select Algorithm</label>
+                                <select id="algorithm-selector" class="form-control">
+                                    <option value="rf">Random Forest Classifier</option>
+                                    <option value="lr">Logistic Regression</option>
+                                </select>
+                            </div>
+                            <button type="submit" id="btn-train" class="btn btn-primary" style="width:100%; margin-top:15px;">
+                                Train & Update Model Now
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category SECTION: UPLOAD & WIPE -->
+            <div id="analytics-section-upload" class="analytics-sub-section" style="display: none;">
+                <div class="dashboard-grid">
+                    <div class="table-card glass" style="grid-column: 1 / -1;">
+                        <h3 class="card-title">
+                            <ion-icon name="cloud-upload-outline" style="color:var(--primary-color);"></ion-icon>
+                            Upload Trained Dataset
+                        </h3>
+                        <p style="color: var(--text-secondary); margin-bottom:15px;">
+                            Add multiple evaluation records at once using a CSV file.
+                        </p>
+                        <form id="upload-csv-form" onsubmit="handleCSVUpload(event)">
+                            <div class="form-group">
+                                <input type="file" id="csv-file-input" class="form-control" accept=".csv" required style="padding: 10px;">
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width:100%; margin-bottom:15px;">
+                                <ion-icon name="document-text-outline"></ion-icon> Upload CSV File
+                            </button>
+                        </form>
+                        <hr style="border: 0; border-top: 1px solid var(--card-border); margin-bottom:15px;">
+                        <h3 class="card-title" style="font-size:1.15rem; margin-top:15px; margin-bottom:15px;">
+                            <ion-icon name="trash-outline" style="color:var(--danger-color);"></ion-icon>
+                            Dataset Management
+                        </h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px;">Wipe system evaluations to start fresh.</p>
+                        <button class="btn btn-danger" onclick="wipeTransactions()" style="width:100%; padding:14px;">
+                            <ion-icon name="trash-bin-outline"></ion-icon> Delete All Transactions & Reset System
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category SECTION: ADMIN RESET -->
+            <div id="analytics-section-reset" class="analytics-sub-section" style="display: none;">
+                <div class="dashboard-grid">
+                    <div class="form-card glass" style="grid-column: 1 / -1;">
+                        <h3 class="card-title">
+                            <ion-icon name="key-outline" style="color:var(--warning-color);"></ion-icon>
+                            Account Password Reset
+                        </h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px;">Securely reset your administrator login credentials.</p>
+                        <form id="admin-password-reset-form" onsubmit="handleAdminPasswordReset(event)" style="max-width: 450px;">
+                            <div class="form-group">
+                                <label for="admin-new-password">New Password</label>
+                                <input type="password" id="admin-new-password" class="form-control" placeholder="Enter new strong password" required autocomplete="new-password">
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;">
+                                Reset Account Password
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= USER MANAGEMENT TAB ================= -->
+        <div id="tab-users" class="admin-panel-tab" style="display: none;">
+            
+            <div class="dashboard-grid">
+                <div class="form-card glass">
+                    <h3 class="card-title">
+                        <ion-icon name="person-add-outline" style="color: var(--primary-color);"></ion-icon>
+                        Create System User
+                    </h3>
+                    <form id="admin-user-form" onsubmit="handleAddUser(event)">
+                        <div class="form-group">
+                            <label for="new-user-username">Username</label>
+                            <input type="text" id="new-user-username" class="form-control" placeholder="JaneDoe" required autocomplete="username">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-user-password">Password</label>
+                            <input type="password" id="new-user-password" class="form-control" placeholder="Create a temporary password" required autocomplete="new-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="new-user-role">Assigned Role</label>
+                            <select id="new-user-role" class="form-control">
+                                <option value="user">User</option>
+                                <option value="admin">Administrator</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;">
+                            Add & Authorize User
+                        </button>
+                    </form>
+                </div>
+
+                <div class="table-card glass">
+                    <h3 class="card-title">
+                        <ion-icon name="people-outline" style="color:var(--accent-color);"></ion-icon>
+                        Registered Accounts
+                    </h3>
+                    <div class="table-responsive">
+                        <table class="data-table" id="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Assigned Role</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Inserted dynamically via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= SYSTEM AUDIT LOGS TAB ================= -->
+        <div id="tab-audit" class="admin-panel-tab" style="display: none;">
+            <div class="table-card glass" style="width: 100%;">
+                <h3 class="card-title">
+                    <ion-icon name="receipt-outline" style="color:var(--warning-color);"></ion-icon>
+                    Secured Audit Log
+                </h3>
+                <p style="color: var(--text-secondary); margin-bottom: 25px;">
+                    Track login sequences, admin configurations, and inference events.
+                </p>
+                <div class="table-responsive">
+                    <table class="data-table" id="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action Performed</th>
+                                <th>User</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Inserted dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Admin dashboard controller JS module integration -->
+    <script src="js/admin.js"></script>
+</body>
+</html>
