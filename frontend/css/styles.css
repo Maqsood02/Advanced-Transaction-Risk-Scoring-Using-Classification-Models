@@ -426,27 +426,29 @@ header {
 
 @media (max-width: 768px) {
     header {
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
-        align-items: center !important;
-        justify-content: space-between !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
         padding: 12px 16px !important;
-        gap: 8px !important;
     }
     .brand {
-        font-size: 1.15rem !important;
-        flex: 1 1 auto !important;
+        font-size: 1.25rem !important;
+        justify-content: center !important;
+        width: 100% !important;
     }
     .nav-links {
         display: flex !important;
+        width: 100% !important;
+        justify-content: space-between !important;
         align-items: center !important;
-        justify-content: flex-end !important;
-        flex: 1 1 auto !important;
-        gap: 6px !important;
+        gap: 10px !important;
+    }
+    .nav-links span {
+        font-size: 0.9rem !important;
     }
     .nav-links .btn {
-        padding: 6px 10px !important;
-        font-size: 0.8rem !important;
+        padding: 6px 14px !important;
+        font-size: 0.85rem !important;
         white-space: nowrap !important;
     }
     .main-container {
@@ -454,42 +456,21 @@ header {
         margin: 20px auto !important;
     }
     .form-card, .table-card {
-        padding: 18px !important;
+        padding: 16px !important;
         margin-bottom: 20px !important;
         border-radius: 12px !important;
     }
     .dashboard-grid {
         gap: 20px !important;
     }
-}
-
-@media (max-width: 480px) {
-    header {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        justify-content: flex-start !important;
-        gap: 8px !important;
-        padding: 10px 14px !important;
-    }
-    .brand {
-        font-size: 1.1rem !important;
-        justify-content: center !important;
+    #btn-predict {
         width: 100% !important;
-    }
-    .nav-links {
-        width: 100% !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        gap: 4px !important;
-    }
-    .nav-links span {
+        white-space: normal !important;
+        word-wrap: break-word !important;
         font-size: 0.85rem !important;
-    }
-    .nav-links .btn {
-        padding: 5px 8px !important;
-        font-size: 0.75rem !important;
-    }
-    .form-card, .table-card {
-        padding: 14px !important;
+        padding: 10px 6px !important;
+        height: auto !important;
+        line-height: 1.3 !important;
+        display: block !important;
     }
 }
