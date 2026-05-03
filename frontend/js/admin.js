@@ -443,18 +443,13 @@ async function handleCSVUpload(e) {
     formData.append('file', fileInput.files[0]);
 
     try {
-        const response = await fetch(`${API_BASE}/api/admin/datasets/upload`, {
+        const data = await apiFetch(`${API_BASE}/api/admin/datasets/upload`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${adminToken}`
             },
             body: formData
         });
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to upload dataset');
-        }
 
         showNotification(data.message || 'Dataset uploaded successfully!');
         document.getElementById('upload-csv-form').reset();
