@@ -6,7 +6,10 @@ from pymongo import MongoClient
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = "transaction_risk_db"
 
-FALLBACK_FILE = "db_fallback.json"
+if os.environ.get("VERCEL"):
+    FALLBACK_FILE = "/tmp/db_fallback.json"
+else:
+    FALLBACK_FILE = "db_fallback.json"
 
 _fallback_db = {
     "users": [],
