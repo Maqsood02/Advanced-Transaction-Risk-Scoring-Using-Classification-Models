@@ -423,3 +423,30 @@ header {
     color: var(--primary-color);
     border-bottom: 2px solid var(--primary-color);
 }
+
+@media (max-width: 768px) {
+    header {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 12px 16px !important;
+        gap: 8px !important;
+    }
+    .brand {
+        font-size: 1.15rem !important;
+        flex: 1 1 auto !important;
+    }
+    .nav-links {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        flex: 1 1 auto !important;
+        gap: 6px !important;
+    }
+    .nav-links .btn {
+        padding: 6px 10px !important;
+        font-size: 0.8rem !important;
+        white-space: nowrap !important;
+    }
+}
