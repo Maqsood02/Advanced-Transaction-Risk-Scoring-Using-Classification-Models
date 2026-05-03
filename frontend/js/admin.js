@@ -88,17 +88,30 @@ function handleLogout() {
     window.location.href = 'index.html';
 }
 
+async function apiFetch(url, options = {}) {
+    const response = await fetch(url, options);
+    const text = await response.text();
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (e) {
+        if (!response.ok) {
+            throw new Error(`Server Error (${response.status}): ${text.substring(0, 80)}`);
+        }
+        throw new Error('Invalid response from server');
+    }
+    if (!response.ok) {
+        throw new Error(data.error || 'Request failed');
+    }
+    return data;
+}
+
 // ==================== ANALYTICS & METRICS TAB ====================
 async function fetchAdminMetricsAndLoadVisuals() {
     try {
-        const response = await fetch(`${API_BASE}/api/admin/metrics`, {
+        const data = await apiFetch(`${API_BASE}/api/admin/metrics`, {
             headers: { 'Authorization': `Bearer ${adminToken}` }
         });
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to fetch analytics metrics');
-        }
 
         // Apply dynamic metric counts
         const mp = data.model_performance || {};
@@ -242,7 +255,7 @@ async function handleTrain(e) {
     btn.innerText = 'Retraining system weights...';
 
     try {
-        const response = await fetch(`${API_BASE}/api/admin/model/train`, {
+        const data = await apiFetch(`${API_BASE}/api/admin/model/train`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -250,11 +263,6 @@ async function handleTrain(e) {
             },
             body: JSON.stringify({ algorithm })
         });
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to complete model training');
-        }
 
         showNotification(data.message || 'Model weights updated!');
         fetchAdminMetricsAndLoadVisuals();
@@ -271,15 +279,10 @@ async function wipeTransactions() {
     if (!confirm('Are you sure you want to delete all stored transaction data permanently?')) return;
 
     try {
-        const response = await fetch(`${API_BASE}/api/admin/transactions/clear`, {
+        const data = await apiFetch(`${API_BASE}/api/admin/transactions/clear`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${adminToken}` }
         });
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to clear system data');
-        }
 
         showNotification('Historical evaluation data wiped out.');
         fetchAdminMetricsAndLoadVisuals();
