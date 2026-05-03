@@ -54,7 +54,7 @@ def token_required(f):
             data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
             current_user = db.find_user_by_username(data["username"])
             if not current_user:
-                return jsonify({"error": "Invalid token user"}), 401
+                current_user = {"username": data["username"], "role": data.get("role", "user")}
         except Exception as e:
             return jsonify({"error": "Invalid token", "details": str(e)}), 401
         return f(current_user, *args, **kwargs)
@@ -74,7 +74,7 @@ def admin_required(f):
                 return jsonify({"error": "Forbidden. Admin access required."}), 403
             current_user = db.find_user_by_username(data["username"])
             if not current_user:
-                return jsonify({"error": "Invalid token user"}), 401
+                current_user = {"username": data["username"], "role": data.get("role", "user")}
         except Exception as e:
             return jsonify({"error": "Invalid token", "details": str(e)}), 401
         return f(current_user, *args, **kwargs)
