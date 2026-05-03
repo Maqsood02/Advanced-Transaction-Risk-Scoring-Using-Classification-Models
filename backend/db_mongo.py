@@ -34,7 +34,11 @@ load_fallback()
 
 use_mongo = False
 try:
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=1500)
+    from pymongo.server_api import ServerApi
+    if "mongodb+srv" in MONGO_URI:
+        client = MongoClient(MONGO_URI, server_api=ServerApi('1'), serverSelectionTimeoutMS=2500)
+    else:
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2500)
     # Ping the database
     client.admin.command('ping')
     db = client[DB_NAME]
