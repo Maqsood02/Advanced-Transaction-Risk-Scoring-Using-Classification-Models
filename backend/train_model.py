@@ -7,8 +7,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
+if os.environ.get("VERCEL") or not os.access(os.path.dirname(__file__), os.W_OK):
+    DATA_DIR = "/tmp"
+    MODEL_PATH = "/tmp/model.pkl"
+else:
+    DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+    MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
+
 CSV_PATH = os.path.join(DATA_DIR, "transactions.csv")
 
 def generate_synthetic_data():
