@@ -12,11 +12,42 @@
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <style>
+        .sub-tab-nav {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 35px;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 12px rgba(15,23,42,0.02);
+        }
         .active-sub-tab {
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%) !important;
             color: #ffffff !important;
             border-color: transparent !important;
             box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+        }
+        @media (max-width: 768px) {
+            .sub-tab-nav {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+                padding: 8px !important;
+                margin-bottom: 25px !important;
+            }
+            .sub-tab-nav .btn {
+                width: 100% !important;
+                padding: 8px 8px !important;
+                font-size: 0.78rem !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 4px !important;
+                text-align: center !important;
+            }
         }
     </style>
 </head>
@@ -52,7 +83,7 @@
         <div id="tab-metrics" class="admin-panel-tab">
 
             <!-- Premium Feature Category Sub-Navigation -->
-            <div style="display: flex; gap: 12px; margin-bottom: 35px; flex-wrap: wrap; justify-content: center; background: #ffffff; padding: 12px; border-radius: 14px; border: 1px solid var(--card-border); box-shadow: 0 4px 12px rgba(15,23,42,0.02);">
+            <div class="sub-tab-nav">
                 <button class="btn btn-outline active-sub-tab" id="sub-nav-btn-visuals" onclick="switchAnalyticsSection('visuals', this)" style="padding: 10px 22px; font-weight: 600; border-radius: 10px;">
                     <ion-icon name="stats-chart-outline"></ion-icon> Visual Analytics
                 </button>
