@@ -10,13 +10,16 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 # Add current path to sys.path to resolve local imports correctly
-sys.path.append(os.path.dirname(__file__))
+base_dir = os.path.dirname(os.path.abspath(__file__))
+if base_dir not in sys.path:
+    sys.path.append(base_dir)
 
 from security_aes import encrypt_field, decrypt_field
 import db_mongo as db
 import train_model
 
-app = Flask(__name__, static_folder="../frontend", static_url_path="")
+static_dir = os.path.abspath(os.path.join(base_dir, "../frontend"))
+app = Flask(__name__, static_folder=static_dir, static_url_path="")
 CORS(app)
 
 JWT_SECRET = "atrsc_security_secret_key"
@@ -404,15 +407,15 @@ def admin_clear_transactions(current_user):
 # ==================== FRONTEND STATIC PROXY ====================
 @app.route('/')
 def serve_index():
-    return send_from_directory('../frontend', 'index.html')
+    return send_from_directory(static_dir, 'index.html')
 
 @app.route('/admin')
 def serve_admin():
-    return send_from_directory('../frontend', 'admin.html')
+    return send_from_directory(static_dir, 'admin.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    return send_from_directory('../frontend', path)
+    return send_from_directory(static_dir, path)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
