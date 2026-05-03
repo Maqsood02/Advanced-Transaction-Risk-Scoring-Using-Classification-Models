@@ -450,3 +450,31 @@ header {
         white-space: nowrap !important;
     }
 }
+
+@media (max-width: 480px) {
+    header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        padding: 10px 14px !important;
+    }
+    .brand {
+        font-size: 1.1rem !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
+    .nav-links {
+        width: 100% !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 4px !important;
+    }
+    .nav-links span {
+        font-size: 0.85rem !important;
+    }
+    .nav-links .btn {
+        padding: 5px 8px !important;
+        font-size: 0.75rem !important;
+    }
+}
