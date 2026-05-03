@@ -449,6 +449,18 @@ header {
         font-size: 0.8rem !important;
         white-space: nowrap !important;
     }
+    .main-container {
+        padding: 0 12px !important;
+        margin: 20px auto !important;
+    }
+    .form-card, .table-card {
+        padding: 18px !important;
+        margin-bottom: 20px !important;
+        border-radius: 12px !important;
+    }
+    .dashboard-grid {
+        gap: 20px !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -476,5 +488,8 @@ header {
     .nav-links .btn {
         padding: 5px 8px !important;
         font-size: 0.75rem !important;
+    }
+    .form-card, .table-card {
+        padding: 14px !important;
     }
 }
