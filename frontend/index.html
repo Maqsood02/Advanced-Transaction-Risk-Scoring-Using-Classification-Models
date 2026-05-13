@@ -82,20 +82,34 @@
                     <h2>Create Account</h2>
                     <p>Register to get real-time risk evaluations</p>
                 </div>
-                <form id="register-form" onsubmit="handleRegister(event)">
-                    <div class="form-group">
-                        <label for="reg-username">Username</label>
-                        <input type="text" id="reg-username" class="form-control" placeholder="Choose a username" required autocomplete="username">
+                <form id="register-form" onsubmit="handleRegisterRequest(event)">
+                    <div id="register-step-1">
+                        <div class="form-group">
+                            <label for="reg-username">Username</label>
+                            <input type="text" id="reg-username" class="form-control" placeholder="Choose a username" required autocomplete="username">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-email">Email Address</label>
+                            <input type="email" id="reg-email" class="form-control" placeholder="Enter your email" required autocomplete="email">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-password">Password</label>
+                            <input type="password" id="reg-password" class="form-control" placeholder="Create a strong password" required autocomplete="new-password">
+                        </div>
+                        <button type="submit" id="btn-request-otp" class="btn btn-primary" style="width: 100%; padding: 14px;">Send Verification Code</button>
                     </div>
-                    <div class="form-group">
-                        <label for="reg-email">Email Address</label>
-                        <input type="email" id="reg-email" class="form-control" placeholder="Enter your email" required autocomplete="email">
+                    
+                    <div id="register-step-2" style="display: none;">
+                        <p style="color: var(--success-color); margin-bottom: 15px; font-size: 0.95rem; display: flex; align-items: center; gap: 5px;">
+                            <ion-icon name="checkmark-circle-outline" style="font-size: 1.2rem;"></ion-icon> Code sent to your email.
+                        </p>
+                        <div class="form-group">
+                            <label for="reg-otp">Verification Code</label>
+                            <input type="text" id="reg-otp" class="form-control" placeholder="123456" autocomplete="one-time-code" style="letter-spacing: 5px; font-weight: 600; text-align: center; font-size: 1.2rem;">
+                        </div>
+                        <button type="button" id="btn-verify-otp" class="btn btn-primary" style="width: 100%; padding: 14px;" onclick="handleRegisterVerify(event)">Verify & Create Account</button>
                     </div>
-                    <div class="form-group">
-                        <label for="reg-password">Password</label>
-                        <input type="password" id="reg-password" class="form-control" placeholder="Create a strong password" required autocomplete="new-password">
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;">Sign Up</button>
+                    
                     <p style="margin-top: 25px; color: var(--text-secondary); font-size: 0.9rem;">
                         Already have an account? <a href="#" onclick="switchAuthTab('login'); return false;" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">Sign In</a>
                     </p>

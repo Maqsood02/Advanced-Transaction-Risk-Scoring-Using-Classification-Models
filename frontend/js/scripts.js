@@ -20,6 +20,13 @@ function switchAuthTab(tab) {
     } else {
         loginWrapper.style.display = 'none';
         registerWrapper.style.display = 'block';
+        
+        const step1 = document.getElementById('register-step-1');
+        const step2 = document.getElementById('register-step-2');
+        if (step1 && step2) {
+            step1.style.display = 'block';
+            step2.style.display = 'none';
+        }
     }
 }
 
@@ -77,15 +84,19 @@ function showNotification(msg, type = 'success') {
     setTimeout(() => alertBox.remove(), 4000);
 }
 
-// Action Handler - Authentication Register
-async function handleRegister(e) {
+// Action Handler - Request OTP for Register
+async function handleRegisterRequest(e) {
     e.preventDefault();
     const username = document.getElementById('reg-username').value.trim();
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value.trim();
 
+    const btn = document.getElementById('btn-request-otp');
+    btn.disabled = true;
+    btn.innerText = 'Sending...';
+
     try {
-        const response = await fetch(`${API_BASE}/api/register`, {
+        const response = await fetch(`${API_BASE}/api/register/request-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, email, password, role: 'user' })
@@ -93,13 +104,62 @@ async function handleRegister(e) {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to complete registration');
+            throw new Error(data.error || 'Failed to request OTP');
+        }
+
+        showNotification('Verification code sent to your email!');
+        document.getElementById('register-step-1').style.display = 'none';
+        document.getElementById('register-step-2').style.display = 'block';
+    } catch (err) {
+        showNotification(err.message, 'danger');
+        btn.disabled = false;
+        btn.innerText = 'Send Verification Code';
+    }
+}
+
+// Action Handler - Verify OTP & Register
+async function handleRegisterVerify(e) {
+    if (e) e.preventDefault();
+    const email = document.getElementById('reg-email').value.trim();
+    const otp = document.getElementById('reg-otp').value.trim();
+
+    const btn = document.getElementById('btn-verify-otp');
+    btn.disabled = true;
+    btn.innerText = 'Verifying...';
+
+    try {
+        const response = await fetch(`${API_BASE}/api/register/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to verify OTP');
         }
 
         showNotification('Registered successfully! Now sign in.');
+        
+        // Reset form state
+        document.getElementById('register-step-1').style.display = 'block';
+        document.getElementById('register-step-2').style.display = 'none';
+        document.getElementById('reg-username').value = '';
+        document.getElementById('reg-email').value = '';
+        document.getElementById('reg-password').value = '';
+        document.getElementById('reg-otp').value = '';
+        const reqBtn = document.getElementById('btn-request-otp');
+        if (reqBtn) {
+            reqBtn.disabled = false;
+            reqBtn.innerText = 'Send Verification Code';
+        }
+        
         switchAuthTab('login');
     } catch (err) {
         showNotification(err.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Verify & Create Account';
     }
 }
 

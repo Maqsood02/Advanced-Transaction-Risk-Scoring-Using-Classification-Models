@@ -81,71 +81,146 @@ def admin_required(f):
     return decorated
 
 # ==================== AUTH ENDPOINTS ====================
-@app.route('/api/register', methods=['POST'])
-def register():
+pending_otps = {}
+import random
+
+@app.route('/api/register/request-otp', methods=['POST'])
+def request_otp():
     data = request.get_json() or {}
     username = data.get('username', '').strip()
     email = data.get('email', '').strip()
     password = data.get('password', '').strip()
-    role = data.get('role', 'user').strip() # Default role is user
+    role = data.get('role', 'user').strip()
     
     if role not in ["admin", "user"]:
         role = "user"
         
-    if not username or not password:
-        return jsonify({"error": "Username and password are required"}), 400
+    if not username or not password or not email:
+        return jsonify({"error": "Username, email, and password are required"}), 400
         
     existing = db.find_user_by_username(username)
     if existing:
-        return jsonify({"error": "User already exists"}), 400
+        return jsonify({"error": "Username already exists"}), 400
+        
+    otp_code = str(random.randint(100000, 999999))
+    pending_otps[email] = {
+        "username": username,
+        "password": password,
+        "role": role,
+        "otp": otp_code,
+        "expires": datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    }
+    
+    import smtplib
+    from email.mime.text import MIMEText
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER", "atrsc.ac.in@gmail.com")
+    smtp_password = os.environ.get("SMTP_PASSWORD", "uhkr jvih rkgf eifx")
+    
+    if smtp_user and smtp_password:
+        try:
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #f8fafc;">
+                <h2 style="color: #2563eb; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Email Verification Code</h2>
+                <p style="font-size: 16px; color: #333;">Hello <strong>{username}</strong>,</p>
+                <p style="font-size: 16px; color: #333;">Please use the following 6-digit code to verify your email and complete your registration:</p>
+                <h1 style="color: #059669; text-align: center; font-size: 36px; letter-spacing: 8px; margin: 25px 0;">{otp_code}</h1>
+                <p style="font-size: 14px; color: #64748b;">This code is valid for 10 minutes. Do not share it with anyone.</p>
+                <br>
+                <p style="font-size: 14px; color: #64748b;">Best Regards,<br><strong>ATRSC Security Team</strong></p>
+            </div>
+            """
+            msg = MIMEText(html_content, 'html')
+            msg['Subject'] = 'Your ATRSC Verification Code'
+            msg['From'] = f"ATRSC System <{smtp_user}>"
+            msg['To'] = email
+            
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+            server.quit()
+            print(f"[SUCCESS] OTP email sent to {email}")
+        except Exception as e:
+            print(f"[ERROR] Failed to send OTP email: {e}")
+            return jsonify({"error": "Failed to send verification email"}), 500
+            
+    return jsonify({"message": "Verification code sent to your email. Please check your inbox."}), 200
+
+@app.route('/api/register/verify-otp', methods=['POST'])
+def verify_otp():
+    data = request.get_json() or {}
+    email = data.get('email', '').strip()
+    otp = data.get('otp', '').strip()
+    
+    if not email or not otp:
+        return jsonify({"error": "Email and OTP are required"}), 400
+        
+    pending = pending_otps.get(email)
+    if not pending:
+        return jsonify({"error": "No pending registration found for this email, or it expired"}), 400
+        
+    if pending["expires"] < datetime.datetime.utcnow():
+        del pending_otps[email]
+        return jsonify({"error": "OTP has expired. Please request a new one."}), 400
+        
+    if pending["otp"] != otp:
+        return jsonify({"error": "Invalid verification code"}), 400
+        
+    username = pending["username"]
+    password = pending["password"]
+    role = pending["role"]
+    
+    existing = db.find_user_by_username(username)
+    if existing:
+        return jsonify({"error": "Username already exists"}), 400
         
     hashed_pwd = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     new_user = {
         "username": username,
-        "email": email or (username if "@" in username else ""),
+        "email": email,
         "password": hashed_pwd,
         "role": role
     }
     db.add_user(new_user)
     db.add_audit_log("User registration", username, "success")
     
-    # Send registration notification email
-    email_to = new_user.get("email", "")
-    if email_to:
-        import smtplib
-        from email.mime.text import MIMEText
-        smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-        smtp_port = int(os.environ.get("SMTP_PORT", 587))
-        smtp_user = os.environ.get("SMTP_USER", "atrsc.ac.in@gmail.com")
-        smtp_password = os.environ.get("SMTP_PASSWORD", "uhkr jvih rkgf eifx")
-        
-        if smtp_user and smtp_password:
-            try:
-                html_content = f"""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #f8fafc;">
-                    <h2 style="color: #2563eb; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Welcome to ATRSC System!</h2>
-                    <p style="font-size: 16px; color: #333;">Hello <strong>{username}</strong>,</p>
-                    <p style="font-size: 16px; color: #333;">Your account has been successfully created and your email is fully verified.</p>
-                    <p style="font-size: 16px; color: #333;">You are now ready to log in to the portal and access the machine learning automated risk predictions.</p>
-                    <br>
-                    <p style="font-size: 14px; color: #64748b;">Best Regards,<br><strong>ATRSC Security Team</strong></p>
-                </div>
-                """
-                msg = MIMEText(html_content, 'html')
-                msg['Subject'] = 'Account Verification & Welcome to ATRSC'
-                msg['From'] = smtp_user
-                msg['To'] = email_to
-                
-                server = smtplib.SMTP(smtp_server, smtp_port)
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.send_message(msg)
-                server.quit()
-                print(f"[SUCCESS] Welcome email sent to {email_to}")
-            except Exception as e:
-                print(f"[ERROR] Failed to send welcome email: {e}")
-                
-    return jsonify({"message": "User successfully registered", "username": username}), 201
+    # Send welcome email
+    import smtplib
+    from email.mime.text import MIMEText
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER", "atrsc.ac.in@gmail.com")
+    smtp_password = os.environ.get("SMTP_PASSWORD", "uhkr jvih rkgf eifx")
+    
+    if smtp_user and smtp_password:
+        try:
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #f8fafc;">
+                <h2 style="color: #2563eb; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Welcome to ATRSC System!</h2>
+                <p style="font-size: 16px; color: #333;">Hello <strong>{username}</strong>,</p>
+                <p style="font-size: 16px; color: #333;">Your account has been successfully created and your email is fully verified.</p>
+                <p style="font-size: 16px; color: #333;">You are now ready to log in to the portal and access the machine learning automated risk predictions.</p>
+                <br>
+                <p style="font-size: 14px; color: #64748b;">Best Regards,<br><strong>ATRSC Security Team</strong></p>
+            </div>
+            """
+            msg = MIMEText(html_content, 'html')
+            msg['Subject'] = 'Account Verification & Welcome to ATRSC'
+            msg['From'] = f"ATRSC System <{smtp_user}>"
+            msg['To'] = email
+            
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+            server.quit()
+        except Exception as e:
+            print(f"[ERROR] Failed to send welcome email: {e}")
+            
+    del pending_otps[email]
+    return jsonify({"message": "Account successfully verified and registered", "username": username}), 201
 
 @app.route('/api/login', methods=['POST'])
 def login():
