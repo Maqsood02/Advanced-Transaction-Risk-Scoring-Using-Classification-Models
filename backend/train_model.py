@@ -29,9 +29,19 @@ def generate_synthetic_data():
     device_risk = np.random.choice([0, 1], size=n_samples, p=[0.85, 0.15])
     location_risk = np.random.uniform(0.0, 1.0, size=n_samples)
     
+    # New Features
+    has_receipt = np.random.choice([0, 1], size=n_samples, p=[0.3, 0.7])
+    qr_verified = np.random.choice([0, 1], size=n_samples, p=[0.2, 0.8])
+    utr_valid = np.random.choice([0, 1], size=n_samples, p=[0.1, 0.9])
+    upi_id_risk = np.random.uniform(0.0, 1.0, size=n_samples)
+    
     # Target (Fraud)
     # Increase probability of fraud for high amount, late hours, new device, high location risk
     prob = 0.05 + 0.25 * (amount > 300) + 0.2 * np.isin(hour_of_day, [1, 2, 3, 4]) + 0.15 * device_risk + 0.3 * (location_risk > 0.7)
+    
+    # Add new feature influences
+    prob += 0.2 * (has_receipt == 0) + 0.25 * (qr_verified == 0) + 0.3 * (utr_valid == 0) + 0.2 * upi_id_risk
+    
     prob = np.clip(prob, 0.0, 0.95)
     
     is_fraud = (np.random.rand(n_samples) < prob).astype(int)
@@ -41,6 +51,10 @@ def generate_synthetic_data():
         "hour_of_day": hour_of_day,
         "device_risk": device_risk,
         "location_risk": location_risk,
+        "has_receipt": has_receipt,
+        "qr_verified": qr_verified,
+        "utr_valid": utr_valid,
+        "upi_id_risk": upi_id_risk,
         "is_fraud": is_fraud
     })
     
@@ -54,7 +68,7 @@ def train_and_evaluate(algorithm="rf"):
     else:
         df = pd.read_csv(CSV_PATH)
         
-    X = df[["amount", "hour_of_day", "device_risk", "location_risk"]]
+    X = df[["amount", "hour_of_day", "device_risk", "location_risk", "has_receipt", "qr_verified", "utr_valid", "upi_id_risk"]]
     y = df["is_fraud"]
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)

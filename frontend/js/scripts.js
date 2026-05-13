@@ -193,9 +193,8 @@ function renderTransactionsTable(transactions) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>$${parseFloat(t.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-            <td>${t.hour_of_day || 0}:00</td>
-            <td>${t.location || 'Encrypted'}</td>
-            <td>${t.device_name || 'Encrypted'}</td>
+            <td>${t.utr_number ? t.utr_number : '<span style="color:#aaa">None</span>'}</td>
+            <td>${t.upi_id ? t.upi_id : '<span style="color:#aaa">None</span>'}</td>
             <td><strong style="color:var(--primary-color)">${t.risk_score}</strong></td>
             <td>
                 <span class="badge level-${t.risk_level}">${t.risk_level} Risk</span>
@@ -221,6 +220,16 @@ function computeUserMetrics(transactions) {
 async function handlePrediction(e) {
     e.preventDefault();
     const amount = document.getElementById('tx-amount').value;
+    const utr_number = document.getElementById('tx-utr').value;
+    const upi_id = document.getElementById('tx-upi').value;
+    const qr_upload = document.getElementById('tx-qr-upload').files.length > 0;
+    const receipt_upload = document.getElementById('tx-receipt-upload').files.length > 0;
+    
+    const has_receipt = receipt_upload ? 1 : 0;
+    const qr_verified = qr_upload ? 1 : 0;
+    const utr_valid = utr_number.length >= 8 ? 1 : 0;
+    const upi_id_risk = upi_id.toLowerCase().includes('spam') ? 0.9 : 0.1;
+
     const hour_of_day = document.getElementById('tx-hour').value;
     const device_risk = document.getElementById('tx-device-risk').value;
     const location_risk = document.getElementById('tx-loc-risk').value;
@@ -238,7 +247,7 @@ async function handlePrediction(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${userToken}`
             },
-            body: JSON.stringify({ amount, hour_of_day, device_risk, location_risk, location, device_name })
+            body: JSON.stringify({ amount, utr_number, upi_id, has_receipt, qr_verified, utr_valid, upi_id_risk, hour_of_day, device_risk, location_risk, location, device_name })
         });
         const data = await response.json();
 
@@ -259,7 +268,10 @@ async function handlePrediction(e) {
 
         // Clear only non-reusable inputs
         document.getElementById('tx-amount').value = '';
-        document.getElementById('tx-location').value = '';
+        document.getElementById('tx-utr').value = '';
+        document.getElementById('tx-upi').value = '';
+        document.getElementById('tx-qr-upload').value = '';
+        document.getElementById('tx-receipt-upload').value = '';
 
         // Reload data
         fetchTransactions();
@@ -268,5 +280,19 @@ async function handlePrediction(e) {
     } finally {
         btn.disabled = false;
         btn.innerText = 'Run Machine Learning Prediction';
+    }
+}
+
+// Function to simulate a mobile scan
+window.simulateScan = function(type) {
+    if (type === 'QR Code') {
+        document.getElementById('tx-qr-upload').type = 'text'; // simulate fake file input style visually if we wanted, or just flag
+        // actually just alert for demo
+    }
+    showNotification(`Simulated ${type} scan completed using mobile camera.`, 'success');
+    
+    // Auto-fill some valid dummy data to simulate a scan success
+    if (type === 'QR Code') {
+        document.getElementById('tx-upi').value = 'shop@upi';
     }
 }

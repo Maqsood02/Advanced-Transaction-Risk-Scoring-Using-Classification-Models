@@ -219,19 +219,28 @@ def predict_risk(current_user):
     device_risk = int(data.get('device_risk', 0))
     location_risk = float(data.get('location_risk', 0.1))
     
+    # New fields
+    has_receipt = int(data.get('has_receipt', 1))
+    qr_verified = int(data.get('qr_verified', 1))
+    utr_valid = int(data.get('utr_valid', 1))
+    upi_id_risk = float(data.get('upi_id_risk', 0.0))
+    
     # Extra fields for AES encryption
     location = data.get('location', 'Unknown').strip()
     device_name = data.get('device_name', 'Unknown Device').strip()
+    utr_number = data.get('utr_number', '').strip()
+    upi_id = data.get('upi_id', '').strip()
     
     try:
         model = joblib.load(os.path.join(os.path.dirname(__file__), "model.pkl"))
         # Format input exactly as it was trained
-        X = [[amount, hour_of_day, device_risk, location_risk]]
+        X = [[amount, hour_of_day, device_risk, location_risk, has_receipt, qr_verified, utr_valid, upi_id_risk]]
         score = float(model.predict_proba(X)[0][1])
     except Exception as e:
         # Fallback in case of model error (e.g. not loaded)
         print(f"[WARNING] Model inference failed. Using fallback calculation. Error: {e}")
         score = 0.25 + 0.3 * (amount > 500) + 0.15 * device_risk + 0.3 * (location_risk > 0.6)
+        score += 0.2 * (has_receipt == 0) + 0.25 * (qr_verified == 0) + 0.3 * (utr_valid == 0) + 0.2 * upi_id_risk
         score = min(max(score, 0.0), 1.0)
         
     # Classification logic
@@ -245,6 +254,8 @@ def predict_risk(current_user):
     # AES-256 Encryption for sensitive input data fields
     encrypted_location = encrypt_field(location)
     encrypted_device_name = encrypt_field(device_name)
+    encrypted_utr = encrypt_field(utr_number)
+    encrypted_upi = encrypt_field(upi_id)
     
     tx = {
         "username": current_user["username"],
@@ -252,8 +263,14 @@ def predict_risk(current_user):
         "hour_of_day": hour_of_day,
         "device_risk": device_risk,
         "location_risk": location_risk,
+        "has_receipt": has_receipt,
+        "qr_verified": qr_verified,
+        "utr_valid": utr_valid,
+        "upi_id_risk": upi_id_risk,
         "encrypted_location": encrypted_location,
         "encrypted_device_name": encrypted_device_name,
+        "encrypted_utr": encrypted_utr,
+        "encrypted_upi": encrypted_upi,
         "risk_score": round(score, 4),
         "risk_level": level,
         "timestamp": datetime.datetime.now().isoformat()
@@ -265,6 +282,8 @@ def predict_risk(current_user):
     tx_return = tx.copy()
     tx_return["location"] = location
     tx_return["device_name"] = device_name
+    tx_return["utr_number"] = utr_number
+    tx_return["upi_id"] = upi_id
     
     return jsonify({
         "message": "Risk assessed successfully",
@@ -290,8 +309,12 @@ def get_user_transactions(current_user):
     for t in txs:
         t["location"] = decrypt_field(t.get("encrypted_location", ""))
         t["device_name"] = decrypt_field(t.get("encrypted_device_name", ""))
+        t["utr_number"] = decrypt_field(t.get("encrypted_utr", ""))
+        t["upi_id"] = decrypt_field(t.get("encrypted_upi", ""))
         if "encrypted_location" in t: del t["encrypted_location"]
         if "encrypted_device_name" in t: del t["encrypted_device_name"]
+        if "encrypted_utr" in t: del t["encrypted_utr"]
+        if "encrypted_upi" in t: del t["encrypted_upi"]
         
     return jsonify(txs), 200
 
@@ -394,7 +417,7 @@ def admin_upload_dataset(current_user):
         
     try:
         df = pd.read_csv(f)
-        required_cols = ["amount", "hour_of_day", "device_risk", "location_risk"]
+        required_cols = ["amount", "hour_of_day", "device_risk", "location_risk", "has_receipt", "qr_verified", "utr_valid", "upi_id_risk"]
         for c in required_cols:
             if c not in df.columns:
                 return jsonify({"error": f"CSV missing required column: {c}"}), 400
@@ -407,6 +430,10 @@ def admin_upload_dataset(current_user):
             hr = int(r.get("hour_of_day", 12))
             d_risk = int(r.get("device_risk", 0))
             l_risk = float(r.get("location_risk", 0.1))
+            h_rect = int(r.get("has_receipt", 1))
+            q_ver = int(r.get("qr_verified", 1))
+            u_val = int(r.get("utr_valid", 1))
+            upi_risk = float(r.get("upi_id_risk", 0.0))
             
             try:
                 if os.environ.get("VERCEL") or not os.access(os.path.dirname(__file__), os.W_OK):
@@ -416,12 +443,14 @@ def admin_upload_dataset(current_user):
 
                 if os.path.exists(m_path):
                     model = joblib.load(m_path)
-                    score = float(model.predict_proba([[amt, hr, d_risk, l_risk]])[0][1])
+                    score = float(model.predict_proba([[amt, hr, d_risk, l_risk, h_rect, q_ver, u_val, upi_risk]])[0][1])
                 else:
                     score = 0.25 + 0.3 * (amt > 500) + 0.15 * d_risk + 0.3 * (l_risk > 0.6)
+                    score += 0.2 * (h_rect == 0) + 0.25 * (q_ver == 0) + 0.3 * (u_val == 0) + 0.2 * upi_risk
                     score = min(max(score, 0.0), 1.0)
             except Exception:
                 score = 0.25 + 0.3 * (amt > 500) + 0.15 * d_risk + 0.3 * (l_risk > 0.6)
+                score += 0.2 * (h_rect == 0) + 0.25 * (q_ver == 0) + 0.3 * (u_val == 0) + 0.2 * upi_risk
                 score = min(max(score, 0.0), 1.0)
                 
             level = "Low" if score < 0.3 else "Medium" if score <= 0.7 else "High"
@@ -432,8 +461,14 @@ def admin_upload_dataset(current_user):
                 "hour_of_day": hr,
                 "device_risk": d_risk,
                 "location_risk": l_risk,
+                "has_receipt": h_rect,
+                "qr_verified": q_ver,
+                "utr_valid": u_val,
+                "upi_id_risk": upi_risk,
                 "encrypted_location": loc,
                 "encrypted_device_name": dev,
+                "encrypted_utr": encrypt_field("Unknown UTR"),
+                "encrypted_upi": encrypt_field("Unknown UPI"),
                 "risk_score": round(score, 4),
                 "risk_level": level,
                 "timestamp": datetime.datetime.now().isoformat()

@@ -9,6 +9,30 @@
     <!-- Ionicons for modern iconography -->
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <style>
+        .qr-action-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .qr-action-group input[type="file"] {
+            flex: 1;
+            padding: 8px;
+        }
+        .mobile-only-btn {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            white-space: nowrap;
+        }
+        @media (max-width: 768px) {
+            .mobile-only-btn {
+                display: flex;
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -131,6 +155,32 @@
                             <input type="number" step="0.01" id="tx-amount" class="form-control" placeholder="125.50" required>
                         </div>
                         <div class="form-group">
+                            <label for="tx-utr">UTR Number</label>
+                            <input type="text" id="tx-utr" class="form-control" placeholder="12-digit UTR (Optional)">
+                        </div>
+                        <div class="form-group">
+                            <label for="tx-upi">UPI ID</label>
+                            <input type="text" id="tx-upi" class="form-control" placeholder="example@upi (Optional)">
+                        </div>
+                        <div class="form-group">
+                            <label>Shop QR Code</label>
+                            <div class="qr-action-group">
+                                <input type="file" id="tx-qr-upload" class="form-control" accept="image/*" title="Upload Shop QR Code">
+                                <button type="button" class="btn btn-outline mobile-only-btn" onclick="simulateScan('QR Code')">
+                                    <ion-icon name="qr-code-outline"></ion-icon> Scan
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Receipt Upload</label>
+                            <div class="qr-action-group">
+                                <input type="file" id="tx-receipt-upload" class="form-control" accept="image/*,.pdf" title="Upload Transaction Receipt">
+                                <button type="button" class="btn btn-outline mobile-only-btn" onclick="simulateScan('Receipt')">
+                                    <ion-icon name="camera-outline"></ion-icon> Scan
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
                             <label for="tx-hour">Hour of Day (0 - 23)</label>
                             <input type="number" min="0" max="23" id="tx-hour" class="form-control" placeholder="14" required>
                         </div>
@@ -194,9 +244,8 @@
                             <thead>
                                 <tr>
                                     <th>Amount</th>
-                                    <th>Hour</th>
-                                    <th>Region</th>
-                                    <th>Device</th>
+                                    <th>UTR Number</th>
+                                    <th>UPI ID</th>
                                     <th>Score</th>
                                     <th>Risk</th>
                                 </tr>
