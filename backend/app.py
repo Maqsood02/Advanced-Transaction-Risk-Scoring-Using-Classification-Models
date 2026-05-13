@@ -116,13 +116,23 @@ def register():
         from email.mime.text import MIMEText
         smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
         smtp_port = int(os.environ.get("SMTP_PORT", 587))
-        smtp_user = os.environ.get("SMTP_USER", "")
-        smtp_password = os.environ.get("SMTP_PASSWORD", "")
+        smtp_user = os.environ.get("SMTP_USER", "atrsc.ac.in@gmail.com")
+        smtp_password = os.environ.get("SMTP_PASSWORD", "uhkr jvih rkgf eifx")
         
         if smtp_user and smtp_password:
             try:
-                msg = MIMEText(f"Hello {username},\n\nWelcome to ATRSC System! Your account registration was successful.\n\nThank you for signing up.")
-                msg['Subject'] = 'Welcome to ATRSC System'
+                html_content = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #f8fafc;">
+                    <h2 style="color: #2563eb; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Welcome to ATRSC System!</h2>
+                    <p style="font-size: 16px; color: #333;">Hello <strong>{username}</strong>,</p>
+                    <p style="font-size: 16px; color: #333;">Your account has been successfully created and your email is fully verified.</p>
+                    <p style="font-size: 16px; color: #333;">You are now ready to log in to the portal and access the machine learning automated risk predictions.</p>
+                    <br>
+                    <p style="font-size: 14px; color: #64748b;">Best Regards,<br><strong>ATRSC Security Team</strong></p>
+                </div>
+                """
+                msg = MIMEText(html_content, 'html')
+                msg['Subject'] = 'Account Verification & Welcome to ATRSC'
                 msg['From'] = smtp_user
                 msg['To'] = email_to
                 
@@ -170,14 +180,27 @@ def login():
             from email.mime.text import MIMEText
             smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
             smtp_port = int(os.environ.get("SMTP_PORT", 587))
-            smtp_user = os.environ.get("SMTP_USER", "")
-            smtp_password = os.environ.get("SMTP_PASSWORD", "")
+            smtp_user = os.environ.get("SMTP_USER", "atrsc.ac.in@gmail.com")
+            smtp_password = os.environ.get("SMTP_PASSWORD", "uhkr jvih rkgf eifx")
             
             if smtp_user and smtp_password:
                 try:
-                    msg = MIMEText(f"Hello {user['username']},\n\nA login was just detected on your Transaction Risk Scoring account at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\n\nIf this was not you, please secure your account immediately.")
-                    msg['Subject'] = 'Login Notification Alert'
-                    msg['From'] = smtp_user
+                    time_str = datetime.datetime.now().strftime('%B %d, %Y at %I:%M %p')
+                    html_content = f"""
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #f8fafc;">
+                        <h2 style="color: #059669; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Successful Login Alert</h2>
+                        <p style="font-size: 16px; color: #333;">Hello <strong>{user['username']}</strong>,</p>
+                        <p style="font-size: 16px; color: #333;">This is a quick notification that you have successfully logged into the ATRSC System.</p>
+                        <p style="font-size: 15px; color: #333; background-color: #e2e8f0; padding: 10px; border-radius: 5px;"><strong>Time:</strong> {time_str}</p>
+                        <p style="font-size: 14px; color: #64748b; margin-top: 20px;">If this was you, no further action is required. Enjoy your session!</p>
+                        <p style="font-size: 14px; color: #64748b;">If you did not initiate this login, please secure your account immediately by contacting the administrator.</p>
+                        <br>
+                        <p style="font-size: 14px; color: #64748b;">Best Regards,<br><strong>ATRSC Security Team</strong></p>
+                    </div>
+                    """
+                    msg = MIMEText(html_content, 'html')
+                    msg['Subject'] = 'ATRSC System - Successful Login Alert'
+                    msg['From'] = f"ATRSC System <{smtp_user}>"
                     msg['To'] = email_to
                     
                     server = smtplib.SMTP(smtp_server, smtp_port)
