@@ -283,16 +283,19 @@ async function handlePrediction(e) {
     }
 }
 
-// Function to simulate a mobile scan
+// Function to open the mobile camera for scanning
 window.simulateScan = function(type) {
-    if (type === 'QR Code') {
-        document.getElementById('tx-qr-upload').type = 'text'; // simulate fake file input style visually if we wanted, or just flag
-        // actually just alert for demo
-    }
-    showNotification(`Simulated ${type} scan completed using mobile camera.`, 'success');
+    let inputId = type === 'QR Code' ? 'tx-qr-upload' : 'tx-receipt-upload';
+    const input = document.getElementById(inputId);
     
-    // Auto-fill some valid dummy data to simulate a scan success
-    if (type === 'QR Code') {
-        document.getElementById('tx-upi').value = 'shop@upi';
-    }
+    // Temporarily add capture="environment" to force the back camera on mobile devices
+    input.setAttribute('capture', 'environment');
+    
+    // Trigger the file picker which will now open the camera directly
+    input.click();
+    
+    // Remove the capture attribute after a short delay so the normal file upload button still allows gallery choice
+    setTimeout(() => {
+        input.removeAttribute('capture');
+    }, 1000);
 }
