@@ -22,6 +22,18 @@ window.togglePasswordVisibility = function(inputId, iconId) {
     }
 };
 
+// Handle forgot password
+window.handleForgotPassword = function(e) {
+    e.preventDefault();
+    const usernameInput = document.getElementById('login-username').value;
+    const identifier = prompt("Enter your registered email address or username to reset your password:", usernameInput);
+    
+    if (identifier && identifier.trim() !== '') {
+        // Simulate sending request to server
+        showNotification('Password reset instructions have been sent to your registered email.', 'success');
+    }
+};
+
 // Switch visual Auth Tabs
 function switchAuthTab(tab) {
     const loginWrapper = document.getElementById('login-form-wrapper');
