@@ -9,6 +9,19 @@ document.addEventListener('DOMContentLoaded', () => {
     initView();
 });
 
+// Toggle password visibility
+window.togglePasswordVisibility = function(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.name = 'eye-off-outline';
+    } else {
+        input.type = 'password';
+        icon.name = 'eye-outline';
+    }
+};
+
 // Switch visual Auth Tabs
 function switchAuthTab(tab) {
     const loginWrapper = document.getElementById('login-form-wrapper');
@@ -87,9 +100,22 @@ function showNotification(msg, type = 'success') {
 // Action Handler - Request OTP for Register
 async function handleRegisterRequest(e) {
     e.preventDefault();
+    
+    // Intercept if in Step 2 (user pressed Enter in OTP field)
+    const step1 = document.getElementById('register-step-1');
+    if (step1 && step1.style.display === 'none') {
+        return handleRegisterVerify(e);
+    }
+
     const username = document.getElementById('reg-username').value.trim();
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value.trim();
+    const confirmPassword = document.getElementById('reg-password-confirm').value.trim();
+
+    if (password !== confirmPassword) {
+        showNotification('Passwords do not match', 'danger');
+        return;
+    }
 
     const btn = document.getElementById('btn-request-otp');
     btn.disabled = true;
@@ -147,6 +173,7 @@ async function handleRegisterVerify(e) {
         document.getElementById('reg-username').value = '';
         document.getElementById('reg-email').value = '';
         document.getElementById('reg-password').value = '';
+        document.getElementById('reg-password-confirm').value = '';
         document.getElementById('reg-otp').value = '';
         const reqBtn = document.getElementById('btn-request-otp');
         if (reqBtn) {
