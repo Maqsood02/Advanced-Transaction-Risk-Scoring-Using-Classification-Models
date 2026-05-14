@@ -22,28 +22,38 @@ window.togglePasswordVisibility = function(inputId, iconId) {
     }
 };
 
-// Handle forgot password
-window.handleForgotPassword = function(e) {
+// Action Handler - Request Password Reset
+window.handleForgotPasswordRequest = function(e) {
     e.preventDefault();
-    const usernameInput = document.getElementById('login-username').value;
-    const identifier = prompt("Enter your registered email address or username to reset your password:", usernameInput);
+    const email = document.getElementById('forgot-email').value.trim();
     
-    if (identifier && identifier.trim() !== '') {
-        // Simulate sending request to server
-        showNotification('Password reset instructions have been sent to your registered email.', 'success');
-    }
+    const btn = document.getElementById('btn-forgot-password');
+    btn.disabled = true;
+    btn.innerText = 'Sending...';
+
+    // Simulate sending request to server
+    setTimeout(() => {
+        showNotification('Password reset instructions have been sent to ' + email, 'success');
+        btn.disabled = false;
+        btn.innerText = 'Send Reset Link';
+        document.getElementById('forgot-email').value = '';
+        switchAuthTab('login');
+    }, 1000);
 };
 
 // Switch visual Auth Tabs
 function switchAuthTab(tab) {
     const loginWrapper = document.getElementById('login-form-wrapper');
     const registerWrapper = document.getElementById('register-form-wrapper');
+    const forgotWrapper = document.getElementById('forgot-password-form-wrapper');
+
+    loginWrapper.style.display = 'none';
+    registerWrapper.style.display = 'none';
+    if (forgotWrapper) forgotWrapper.style.display = 'none';
 
     if (tab === 'login') {
         loginWrapper.style.display = 'block';
-        registerWrapper.style.display = 'none';
-    } else {
-        loginWrapper.style.display = 'none';
+    } else if (tab === 'register') {
         registerWrapper.style.display = 'block';
         
         const step1 = document.getElementById('register-step-1');
@@ -52,6 +62,8 @@ function switchAuthTab(tab) {
             step1.style.display = 'block';
             step2.style.display = 'none';
         }
+    } else if (tab === 'forgot') {
+        if (forgotWrapper) forgotWrapper.style.display = 'block';
     }
 }
 

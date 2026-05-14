@@ -79,7 +79,7 @@
                         <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
                             Don't have an account? <a href="#" onclick="switchAuthTab('register'); return false;" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">Sign Up</a>
                         </p>
-                        <a href="#" onclick="handleForgotPassword(event)" style="color: var(--text-secondary); font-size: 0.85rem; text-decoration: underline;">Forgot Password?</a>
+                        <a href="#" onclick="switchAuthTab('forgot'); return false;" style="color: var(--text-secondary); font-size: 0.85rem; text-decoration: underline;">Forgot Password?</a>
                     </div>
                 </form>
             </div>
@@ -130,6 +130,25 @@
                     
                     <p style="margin-top: 25px; color: var(--text-secondary); font-size: 0.9rem;">
                         Already have an account? <a href="#" onclick="switchAuthTab('login'); return false;" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">Sign In</a>
+                    </p>
+                </form>
+            </div>
+
+            <!-- Forgot Password Form -->
+            <div id="forgot-password-form-wrapper" style="display: none;">
+                <div class="auth-header">
+                    <h2>Reset Password</h2>
+                    <p>Enter your email to receive reset instructions</p>
+                </div>
+                <form id="forgot-password-form" onsubmit="handleForgotPasswordRequest(event)">
+                    <div class="form-group">
+                        <label for="forgot-email">Email Address</label>
+                        <input type="email" id="forgot-email" class="form-control" placeholder="Enter your registered email" required autocomplete="email">
+                    </div>
+                    <button type="submit" id="btn-forgot-password" class="btn btn-primary" style="width: 100%; padding: 14px;">Send Reset Link</button>
+                    
+                    <p style="margin-top: 25px; color: var(--text-secondary); font-size: 0.9rem; text-align: center;">
+                        Remember your password? <a href="#" onclick="switchAuthTab('login'); return false;" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">Sign In</a>
                     </p>
                 </form>
             </div>
