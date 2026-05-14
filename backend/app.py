@@ -222,6 +222,66 @@ def verify_otp():
     del pending_otps[email]
     return jsonify({"message": "Account successfully verified and registered", "username": username}), 201
 
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json() or {}
+    email = data.get('email', '').strip()
+    
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+        
+    user = db.find_user_by_email(email)
+    if not user:
+        # Don't leak whether user exists
+        return jsonify({"message": "If that email exists, a reset link has been sent."}), 200
+        
+    # Generate a temporary new password
+    import string, random
+    new_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    hashed_pwd = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    user["password"] = hashed_pwd
+    db.delete_user_by_username(user["username"])
+    db.add_user(user)
+    db.add_audit_log("User requested password reset", user["username"], "success")
+    
+    import smtplib
+    from email.mime.text import MIMEText
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER", "atrsc.ac.in@gmail.com")
+    smtp_password = os.environ.get("SMTP_PASSWORD", "uhkr jvih rkgf eifx")
+    
+    if smtp_user and smtp_password:
+        try:
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #f8fafc;">
+                <h2 style="color: #2563eb; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Password Reset</h2>
+                <p style="font-size: 16px; color: #333;">Hello <strong>{user['username']}</strong>,</p>
+                <p style="font-size: 16px; color: #333;">We received a request to reset your password. Here is your new temporary password:</p>
+                <h1 style="color: #059669; text-align: center; font-size: 24px; letter-spacing: 4px; margin: 25px 0; background-color: #e2e8f0; padding: 15px; border-radius: 8px;">{new_password}</h1>
+                <p style="font-size: 14px; color: #64748b;">Please log in with this temporary password and change it immediately.</p>
+                <br>
+                <p style="font-size: 14px; color: #64748b;">Best Regards,<br><strong>ATRSC Security Team</strong></p>
+            </div>
+            """
+            msg = MIMEText(html_content, 'html')
+            msg['Subject'] = 'ATRSC Password Reset'
+            msg['From'] = f"ATRSC System <{smtp_user}>"
+            msg['To'] = email
+            
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+            server.quit()
+            print(f"[SUCCESS] Password reset email sent to {email}")
+        except Exception as e:
+            print(f"[ERROR] Failed to send password reset email: {e}")
+            return jsonify({"error": "Failed to send reset email. Please try again later."}), 500
+            
+    return jsonify({"message": "If that email exists, a reset link has been sent."}), 200
+
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json() or {}

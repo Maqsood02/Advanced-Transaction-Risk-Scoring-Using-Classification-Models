@@ -23,7 +23,7 @@ window.togglePasswordVisibility = function(inputId, iconId) {
 };
 
 // Action Handler - Request Password Reset
-window.handleForgotPasswordRequest = function(e) {
+window.handleForgotPasswordRequest = async function(e) {
     e.preventDefault();
     const email = document.getElementById('forgot-email').value.trim();
     
@@ -31,14 +31,27 @@ window.handleForgotPasswordRequest = function(e) {
     btn.disabled = true;
     btn.innerText = 'Sending...';
 
-    // Simulate sending request to server
-    setTimeout(() => {
+    try {
+        const response = await fetch(`${API_BASE}/api/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to request password reset');
+        }
+
         showNotification('Password reset instructions have been sent to ' + email, 'success');
-        btn.disabled = false;
-        btn.innerText = 'Send Reset Link';
         document.getElementById('forgot-email').value = '';
         switchAuthTab('login');
-    }, 1000);
+    } catch (err) {
+        showNotification(err.message, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Send Reset Link';
+    }
 };
 
 // Switch visual Auth Tabs

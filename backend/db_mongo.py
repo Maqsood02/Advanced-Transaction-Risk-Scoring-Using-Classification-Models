@@ -85,6 +85,19 @@ def find_user_by_username(username):
             return dict(u)
     return None
 
+def find_user_by_email(email):
+    if use_mongo:
+        try:
+            res = get_users_collection().find_one({"email": email})
+            if res:
+                return dict(res)
+        except Exception as e:
+            print(f"[WARNING] MongoDB user find by email failed, falling back: {e}")
+    for u in _fallback_db["users"]:
+        if u.get("email") == email:
+            return dict(u)
+    return None
+
 def find_all_users():
     if use_mongo:
         try:
