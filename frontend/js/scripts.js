@@ -7,6 +7,11 @@ const API_BASE = window.location.origin;
 
 document.addEventListener('DOMContentLoaded', () => {
     initView();
+    // Initialize wizard elements if the prediction form exists on the page
+    if (document.getElementById('prediction-form')) {
+        detectDeviceAndContext();
+        setupDragAndDrop();
+    }
 });
 
 // Toggle password visibility
@@ -397,6 +402,21 @@ async function handlePrediction(e) {
         document.getElementById('tx-qr-upload').value = '';
         document.getElementById('tx-receipt-upload').value = '';
 
+        // Reset dropzones visual state
+        const dropzoneQr = document.getElementById('dropzone-qr');
+        const dropzoneReceipt = document.getElementById('dropzone-receipt');
+        if (dropzoneQr) {
+            dropzoneQr.classList.remove('has-file');
+            document.getElementById('file-info-qr').innerText = 'No file selected';
+        }
+        if (dropzoneReceipt) {
+            dropzoneReceipt.classList.remove('has-file');
+            document.getElementById('file-info-receipt').innerText = 'No file selected';
+        }
+
+        // Return user to Step 1 (Details) on wizard
+        goToWizardStep(0);
+
         // Reload data
         fetchTransactions();
     } catch (err) {
@@ -422,4 +442,287 @@ window.simulateScan = function(type) {
     setTimeout(() => {
         input.removeAttribute('capture');
     }, 1000);
+}
+
+// ==================== WIZARD FORM LOGIC ====================
+let currentWizardStep = 0;
+
+window.goToWizardStep = function(stepIndex) {
+    // Only allow moving forward if current step is validated
+    if (stepIndex > currentWizardStep) {
+        for (let i = currentWizardStep; i < stepIndex; i++) {
+            if (!validateStep(i)) return;
+        }
+    }
+    
+    // Update step visibility
+    const steps = document.querySelectorAll('.wizard-step-panel');
+    steps.forEach((panel, idx) => {
+        if (idx === stepIndex) {
+            panel.style.display = 'block';
+            panel.classList.add('active');
+        } else {
+            panel.style.display = 'none';
+            panel.classList.remove('active');
+        }
+    });
+
+    // Update progress stepper visually
+    const stepIndicators = document.querySelectorAll('.stepper-step');
+    stepIndicators.forEach((indicator, idx) => {
+        indicator.classList.remove('active', 'completed');
+        if (idx === stepIndex) {
+            indicator.classList.add('active');
+        } else if (idx < stepIndex) {
+            indicator.classList.add('completed');
+        }
+    });
+
+    const lines = document.querySelectorAll('.stepper-line');
+    lines.forEach((line, idx) => {
+        line.classList.remove('active', 'completed');
+        if (idx < stepIndex) {
+            line.classList.add('completed');
+        } else if (idx === stepIndex) {
+            line.classList.add('active');
+        }
+    });
+
+    // Update buttons in actions footer
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const btnPredict = document.getElementById('btn-predict');
+
+    if (stepIndex === 0) {
+        btnPrev.style.display = 'none';
+        btnNext.style.display = 'block';
+        btnPredict.style.display = 'none';
+    } else if (stepIndex === 1) {
+        btnPrev.style.display = 'block';
+        btnNext.style.display = 'block';
+        btnPredict.style.display = 'none';
+    } else if (stepIndex === 2) {
+        btnPrev.style.display = 'block';
+        btnNext.style.display = 'none';
+        btnPredict.style.display = 'block';
+    }
+
+    currentWizardStep = stepIndex;
+};
+
+window.nextWizardStep = function() {
+    if (currentWizardStep < 2) {
+        goToWizardStep(currentWizardStep + 1);
+    }
+};
+
+window.prevWizardStep = function() {
+    if (currentWizardStep > 0) {
+        goToWizardStep(currentWizardStep - 1);
+    }
+};
+
+function validateStep(stepIndex) {
+    if (stepIndex === 0) {
+        const amountInput = document.getElementById('tx-amount');
+        if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
+            showNotification('Please enter a valid transaction amount.', 'danger');
+            amountInput.focus();
+            return false;
+        }
+    } else if (stepIndex === 1) {
+        // Step 2 uploads are optional
+        return true;
+    } else if (stepIndex === 2) {
+        const locationInput = document.getElementById('tx-location');
+        if (!locationInput.value.trim()) {
+            showNotification('Region/City is required.', 'danger');
+            locationInput.focus();
+            return false;
+        }
+        const deviceInput = document.getElementById('tx-device-name');
+        if (!deviceInput.value.trim()) {
+            showNotification('Device Identity is required.', 'danger');
+            deviceInput.focus();
+            return false;
+        }
+    }
+    return true;
+}
+
+// Drag & Drop Area Click
+window.triggerFileInput = function(id) {
+    document.getElementById(id).click();
+};
+
+// File Selection Handler
+window.handleFileSelect = function(type) {
+    const inputId = type === 'qr' ? 'tx-qr-upload' : 'tx-receipt-upload';
+    const dropzoneId = type === 'qr' ? 'dropzone-qr' : 'dropzone-receipt';
+    const infoId = type === 'qr' ? 'file-info-qr' : 'file-info-receipt';
+    
+    const input = document.getElementById(inputId);
+    const dropzone = document.getElementById(dropzoneId);
+    const info = document.getElementById(infoId);
+    
+    if (input.files && input.files.length > 0) {
+        const file = input.files[0];
+        info.innerText = `${file.name} (${formatBytes(file.size)})`;
+        dropzone.classList.add('has-file');
+    } else {
+        info.innerText = 'No file selected';
+        dropzone.classList.remove('has-file');
+    }
+};
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Set up drag-and-drop file inputs
+function setupDragAndDrop() {
+    const dropzones = [
+        { id: 'dropzone-qr', inputId: 'tx-qr-upload', type: 'qr' },
+        { id: 'dropzone-receipt', inputId: 'tx-receipt-upload', type: 'receipt' }
+    ];
+
+    dropzones.forEach(zone => {
+        const el = document.getElementById(zone.id);
+        const input = document.getElementById(zone.inputId);
+        if (!el || !input) return;
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            el.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        // Add visual styles on dragover
+        ['dragenter', 'dragover'].forEach(eventName => {
+            el.addEventListener(eventName, () => {
+                el.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            el.addEventListener(eventName, () => {
+                el.classList.remove('dragover');
+            }, false);
+        });
+
+        // Handle dropped files
+        el.addEventListener('drop', e => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                input.files = files;
+                handleFileSelect(zone.type);
+            }
+        }, false);
+    });
+}
+
+// Hour dynamic label display
+window.updateHourLabel = function(val) {
+    const display = document.getElementById('hour-readout');
+    const hour = parseInt(val);
+    if (hour === 0) {
+        display.innerText = '12:00 AM (Midnight)';
+    } else if (hour === 12) {
+        display.innerText = '12:00 PM (Noon)';
+    } else if (hour > 12) {
+        display.innerText = `${hour - 12}:00 PM`;
+    } else {
+        display.innerText = `${hour}:00 AM`;
+    }
+};
+
+// Sync with actual client time
+window.syncCurrentHour = function() {
+    const currentHour = new Date().getHours();
+    const slider = document.getElementById('tx-hour');
+    if (slider) {
+        slider.value = currentHour;
+        updateHourLabel(currentHour);
+        showNotification('Synchronized to current device time.');
+    }
+};
+
+// Location Risk slider label updates
+window.updateLocRiskLabel = function(val) {
+    const score = parseFloat(val);
+    const display = document.getElementById('loc-risk-readout');
+    if (!display) return;
+    display.innerText = score.toFixed(2);
+    
+    if (score < 0.3) {
+        display.style.background = '#fee2e2';
+        display.style.color = 'var(--danger-color)';
+    } else if (score <= 0.7) {
+        display.style.background = '#fef3c7';
+        display.style.color = 'var(--warning-color)';
+    } else {
+        display.style.background = '#d1fae5';
+        display.style.color = 'var(--success-color)';
+    }
+};
+
+// Device risk segmented toggles updater
+window.updateDeviceRisk = function(val) {
+    const hiddenInput = document.getElementById('tx-device-risk');
+    if (hiddenInput) {
+        hiddenInput.value = val;
+    }
+};
+
+// Autofill/Auto-detect device metadata
+function detectDeviceAndContext() {
+    // 1. Detect browser user agent and set Device Identity
+    const deviceInput = document.getElementById('tx-device-name');
+    if (deviceInput && !deviceInput.value) {
+        const ua = navigator.userAgent;
+        let device = "Desktop PC";
+        if (/android/i.test(ua)) device = "Android Mobile";
+        else if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) device = "iOS Device";
+        else if (/Macintosh/i.test(ua)) device = "macOS Workstation";
+        else if (/Linux/i.test(ua)) device = "Linux Workstation";
+        else if (/Windows/i.test(ua)) device = "Windows PC";
+        
+        let browser = "Browser";
+        if (ua.indexOf("Firefox") > -1) browser = "Firefox";
+        else if (ua.indexOf("SamsungBrowser") > -1) browser = "Samsung Browser";
+        else if (ua.indexOf("Opera") > -1 || ua.indexOf("OPR") > -1) browser = "Opera";
+        else if (ua.indexOf("Trident") > -1) browser = "Internet Explorer";
+        else if (ua.indexOf("Edge") > -1 || ua.indexOf("Edg") > -1) browser = "Edge";
+        else if (ua.indexOf("Chrome") > -1) browser = "Chrome";
+        else if (ua.indexOf("Safari") > -1) browser = "Safari";
+        
+        deviceInput.value = `${device} (${browser})`;
+    }
+
+    // 2. Set Hour slider default value to current hour
+    const hourSlider = document.getElementById('tx-hour');
+    if (hourSlider) {
+        const currentHour = new Date().getHours();
+        hourSlider.value = currentHour;
+        updateHourLabel(currentHour);
+    }
+    
+    // 3. Set Location Trust default
+    const locSlider = document.getElementById('tx-loc-risk');
+    if (locSlider) {
+        updateLocRiskLabel(locSlider.value);
+    }
+
+    // 4. Default simulated city/region if empty
+    const locInput = document.getElementById('tx-location');
+    if (locInput && !locInput.value) {
+        locInput.value = "San Francisco, USA";
+    }
 }
