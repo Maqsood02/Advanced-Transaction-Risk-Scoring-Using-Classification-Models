@@ -12,7 +12,7 @@ print(f"Attempting to connect to: {uri.split('@')[-1]} (password hidden for secu
 
 # Create a new client and connect to the server
 try:
-    client = MongoClient(uri, server_api=ServerApi('1'), serverSelectionTimeoutMS=5000)
+    client = MongoClient(uri, server_api=ServerApi('1'), serverSelectionTimeoutMS=5000, tlsAllowInvalidCertificates=True)
     # Send a ping to confirm a successful connection
     client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
