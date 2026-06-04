@@ -253,16 +253,31 @@ header {
     display: grid;
     grid-template-columns: 1fr;
     gap: 30px;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media(min-width: 900px) {
     .dashboard-grid {
         grid-template-columns: 4fr 5fr;
     }
+    
+    /* Center the wizard card if it's the only visible child (history is hidden) */
+    .dashboard-grid:has(#evaluation-history-card[style*="display: none"]) {
+        grid-template-columns: 1fr;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .dashboard-grid:has(#evaluation-history-card[style*="display: none"]) .wizard-card {
+        max-width: 620px;
+        width: 100%;
+        margin: 0 auto;
+    }
 }
 
 .form-card, .table-card {
-    padding: 30px;
+    padding: 35px;
 }
 
 .card-title {
@@ -518,6 +533,22 @@ header {
 .wizard-card {
     position: relative;
     overflow: hidden;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 24px;
+    box-shadow: 
+        0 20px 40px -15px rgba(15, 23, 42, 0.05),
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wizard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 
+        0 30px 60px -20px rgba(37, 99, 235, 0.08),
+        0 0 0 1px rgba(37, 99, 235, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+    border-color: rgba(37, 99, 235, 0.2);
 }
 
 /* Stepper Steppers */
@@ -525,15 +556,16 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
-    padding: 0 10px;
+    margin-bottom: 35px;
+    padding: 0 5px;
+    position: relative;
 }
 
 .stepper-step {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     position: relative;
     z-index: 2;
     cursor: pointer;
@@ -541,8 +573,8 @@ header {
 }
 
 .stepper-step .step-circle {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: #e2e8f0;
     color: var(--text-secondary);
@@ -551,23 +583,31 @@ header {
     justify-content: center;
     font-weight: 700;
     font-size: 0.95rem;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: 2px solid transparent;
 }
 
 .stepper-step .step-title {
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
     transition: all 0.3s ease;
 }
 
+@keyframes stepPulse {
+    0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.3); }
+    70% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
 .stepper-step.active .step-circle {
-    background: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
     color: #ffffff;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+    border-color: rgba(255, 255, 255, 0.8);
+    animation: stepPulse 2s infinite;
+    transform: scale(1.08);
 }
 
 .stepper-step.active .step-title {
@@ -577,6 +617,7 @@ header {
 .stepper-step.completed .step-circle {
     background: var(--success-color);
     color: #ffffff;
+    transform: scale(1.02);
 }
 
 .stepper-step.completed .step-title {
@@ -587,10 +628,10 @@ header {
     height: 2px;
     background: #e2e8f0;
     flex: 1;
-    margin: 0 -15px;
-    margin-bottom: 20px; /* Offset the text height to align center */
+    margin: 0 -10px;
+    margin-bottom: 24px; /* Align line with circles */
     z-index: 1;
-    transition: background 0.3s ease;
+    transition: all 0.4s ease;
 }
 
 .stepper-line.active {
@@ -606,47 +647,53 @@ header {
     position: relative;
     display: flex;
     align-items: center;
+    width: 100%;
 }
 
 .input-with-icon .input-icon {
     position: absolute;
     left: 16px;
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     color: var(--text-secondary);
     pointer-events: none;
-    transition: color 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .input-with-icon .form-control {
-    padding-left: 46px;
+    padding-left: 48px;
 }
 
+.input-with-icon .form-control:focus ~ .input-icon,
 .input-with-icon .form-control:focus + .input-icon {
     color: var(--primary-color);
+    transform: translateY(-50%) scale(1.15);
 }
 
 .required-star {
     color: var(--danger-color);
-    font-weight: bold;
+    margin-left: 3px;
 }
 
 .form-help-text {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     color: var(--text-secondary);
-    margin-top: 4px;
+    margin-top: 6px;
+    margin-left: 2px;
 }
 
 /* File Dropzones styling */
 .file-dropzone {
     border: 2px dashed #cbd5e1;
-    border-radius: 14px;
-    padding: 24px 20px;
+    border-radius: 16px;
+    padding: 26px 20px;
     text-align: center;
     background: #f8fafc;
     cursor: pointer;
     position: relative;
-    transition: all 0.25s ease-in-out;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -657,12 +704,14 @@ header {
 .file-dropzone:hover {
     border-color: var(--primary-color);
     background: rgba(37, 99, 235, 0.02);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -10px rgba(15, 23, 42, 0.08);
 }
 
 .file-dropzone.dragover {
     border-color: var(--primary-color);
     background: rgba(37, 99, 235, 0.08);
-    transform: scale(1.01);
+    transform: scale(1.02);
 }
 
 .file-input-hidden {
@@ -673,30 +722,36 @@ header {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .dropzone-icon {
-    font-size: 2.2rem;
+    font-size: 2.4rem;
     color: var(--text-secondary);
-    transition: transform 0.2s ease, color 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .file-dropzone:hover .dropzone-icon {
-    transform: translateY(-2px);
+    transform: translateY(-3px) scale(1.05);
     color: var(--primary-color);
 }
 
 .dropzone-text {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 500;
     color: var(--text-primary);
 }
 
 .dropzone-text .browse-link {
     color: var(--primary-color);
-    text-decoration: underline;
+    text-decoration: none;
     font-weight: 600;
+    border-bottom: 1.5px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.dropzone-text:hover .browse-link {
+    border-color: var(--primary-color);
 }
 
 .file-info {
@@ -704,7 +759,7 @@ header {
     color: var(--text-secondary);
     font-weight: 600;
     background: #e2e8f0;
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 20px;
     margin-top: 4px;
     display: inline-block;
@@ -712,16 +767,19 @@ header {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: all 0.3s ease;
 }
 
 .file-dropzone.has-file {
     border-style: solid;
     border-color: var(--success-color);
-    background: rgba(22, 163, 74, 0.02);
+    background: rgba(16, 185, 129, 0.02);
+    box-shadow: 0 10px 25px -10px rgba(16, 185, 129, 0.1);
 }
 
 .file-dropzone.has-file .dropzone-icon {
     color: var(--success-color);
+    transform: scale(1.05);
 }
 
 .file-dropzone.has-file .file-info {
@@ -730,11 +788,12 @@ header {
 }
 
 .scan-btn {
-    padding: 6px 12px;
+    padding: 6px 14px;
     font-size: 0.8rem;
     border-radius: 8px;
     margin-top: 2px;
     z-index: 10;
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.02);
 }
 
 /* Custom Range Sliders */
@@ -742,16 +801,17 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .value-readout {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 700;
     color: var(--primary-color);
-    background: rgba(37, 99, 235, 0.1);
-    padding: 2px 8px;
-    border-radius: 6px;
+    background: rgba(37, 99, 235, 0.08);
+    padding: 3px 10px;
+    border-radius: 8px;
+    transition: all 0.25s ease;
 }
 
 .score-badge {
@@ -784,12 +844,14 @@ header {
     border-radius: 50%;
     background: var(--primary-color);
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
-    transition: transform 0.1s ease, background-color 0.2s ease;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .range-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
+    transform: scale(1.25);
+    background: var(--accent-color);
+    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.25);
 }
 
 .btn-icon-only {
@@ -817,8 +879,8 @@ header {
 .segmented-option {
     flex: 1;
     text-align: center;
-    padding: 10px 14px;
-    font-size: 0.85rem;
+    padding: 12px 14px;
+    font-size: 0.88rem;
     font-weight: 600;
     color: var(--text-secondary);
     border-radius: 8px;
@@ -827,13 +889,13 @@ header {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    transition: all 0.25s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .segmented-control input[type="radio"]:checked + .segmented-option {
     background: #ffffff;
     color: var(--text-primary);
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
 }
 
 .segmented-control input[type="radio"]#device-risk-yes:checked + .segmented-option {
@@ -845,7 +907,7 @@ header {
     display: flex;
     justify-content: space-between;
     gap: 15px;
-    margin-top: 30px;
+    margin-top: 35px;
     border-top: 1px solid var(--card-border);
     padding-top: 20px;
 }
@@ -856,21 +918,26 @@ header {
 
 /* Animation transitions */
 .wizard-step-panel {
-    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    display: none;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes slideFadeIn {
+    0% { opacity: 0; transform: translateY(12px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.wizard-step-panel.active {
+    display: block;
+    animation: slideFadeIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 @media (max-width: 768px) {
     .stepper-wrapper {
-        margin-bottom: 20px;
+        margin-bottom: 25px;
     }
     .stepper-step .step-circle {
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         font-size: 0.85rem;
     }
     .stepper-step .step-title {
