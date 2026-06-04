@@ -435,9 +435,11 @@ async function handlePrediction(e) {
     const receipt_upload = document.getElementById('tx-receipt-upload').files.length > 0;
     
     const has_receipt = receipt_upload ? 1 : 0;
-    const qr_verified = qr_upload ? 1 : 0;
     const utr_valid = utr_number.length >= 8 ? 1 : 0;
-    const upi_id_risk = upi_id.toLowerCase().includes('spam') ? 0.9 : 0.1;
+    
+    // Get the decoded QR Code text if uploaded
+    const qr_code_text = document.getElementById('tx-qr-upload').dataset.upiUri || '';
+    const qr_verified = qr_upload && document.getElementById('tx-qr-upload').dataset.valid === "true" ? 1 : 0;
 
     const hour_of_day = document.getElementById('tx-hour').value;
     const device_risk = document.getElementById('tx-device-risk').value;
@@ -456,7 +458,7 @@ async function handlePrediction(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${userToken}`
             },
-            body: JSON.stringify({ amount, utr_number, upi_id, has_receipt, qr_verified, utr_valid, upi_id_risk, hour_of_day, device_risk, location_risk, location, device_name })
+            body: JSON.stringify({ amount, utr_number, upi_id, has_receipt, utr_valid, hour_of_day, device_risk, location_risk, location, device_name, qr_code_text, qr_verified })
         });
         const data = await response.json();
 
@@ -485,7 +487,12 @@ async function handlePrediction(e) {
         document.getElementById('tx-amount').value = '';
         document.getElementById('tx-utr').value = '';
         document.getElementById('tx-upi').value = '';
-        document.getElementById('tx-qr-upload').value = '';
+        const qrUploadInput = document.getElementById('tx-qr-upload');
+        if (qrUploadInput) {
+            qrUploadInput.value = '';
+            qrUploadInput.dataset.upiUri = '';
+            qrUploadInput.dataset.valid = 'false';
+        }
         document.getElementById('tx-receipt-upload').value = '';
 
         // Reset dropzones visual state
@@ -705,6 +712,7 @@ window.handleFileSelect = function(type) {
                             info.innerText = `${file.name} (Valid Payment QR)`;
                             dropzone.classList.add('has-file');
                             input.dataset.valid = "true";
+                            input.dataset.upiUri = qrText;
                             
                             // Autofill the Merchant UPI ID if parsed
                             try {
@@ -723,6 +731,7 @@ window.handleFileSelect = function(type) {
                         } else {
                             showNotification('Invalid QR: Image does not contain a valid UPI payment QR code (upi://pay).', 'danger');
                             input.value = '';
+                            input.dataset.upiUri = '';
                             info.innerText = 'No file selected';
                             dropzone.classList.remove('has-file');
                             input.dataset.valid = "false";
@@ -730,6 +739,7 @@ window.handleFileSelect = function(type) {
                     } else {
                         showNotification('Invalid QR: Could not detect any QR code structure in the uploaded image.', 'danger');
                         input.value = '';
+                        input.dataset.upiUri = '';
                         info.innerText = 'No file selected';
                         dropzone.classList.remove('has-file');
                         input.dataset.valid = "false";
@@ -747,6 +757,7 @@ window.handleFileSelect = function(type) {
         dropzone.classList.remove('has-file');
         if (type === 'qr') {
             input.dataset.valid = "false";
+            input.dataset.upiUri = '';
         }
     }
 };

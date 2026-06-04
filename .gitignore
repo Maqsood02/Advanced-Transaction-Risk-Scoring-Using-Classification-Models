@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.log
+.env
+secret.key
+backend/secret.key
+db_fallback.json

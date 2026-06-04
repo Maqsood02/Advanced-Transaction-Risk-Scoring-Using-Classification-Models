@@ -389,15 +389,66 @@ def predict_risk(current_user):
     
     # New fields
     has_receipt = int(data.get('has_receipt', 1))
-    qr_verified = int(data.get('qr_verified', 1))
     utr_valid = int(data.get('utr_valid', 1))
-    upi_id_risk = float(data.get('upi_id_risk', 0.0))
     
     # Extra fields for AES encryption
     location = data.get('location', 'Unknown').strip()
     device_name = data.get('device_name', 'Unknown Device').strip()
     utr_number = data.get('utr_number', '').strip()
     upi_id = data.get('upi_id', '').strip()
+    
+    # 1. Analyze UPI ID risk on the server side
+    upi_id_risk = 0.1  # Default baseline risk
+    if upi_id:
+        import re
+        # Validate format
+        if not re.match(r"^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$", upi_id):
+            upi_id_risk = 0.8  # Invalid format is highly risky
+        else:
+            # Check suspicious words
+            suspicious_words = ["spam", "fake", "scam", "fraud", "test", "temp", "hack", "dummy"]
+            if any(w in upi_id.lower() for w in suspicious_words):
+                upi_id_risk = 0.9
+            else:
+                # Check for random/suspicious account generation patterns
+                handle = upi_id.split("@")[0]
+                if handle.isdigit() and len(handle) >= 10:
+                    upi_id_risk = 0.7  # Long purely numeric handles are suspicious
+                elif len(handle) > 15 and re.search(r"[0-9]", handle) and re.search(r"[a-zA-Z]", handle):
+                    upi_id_risk = 0.6  # Mixed alphanumeric long handles are suspicious
+                    
+    # 2. Analyze QR Code pattern & verify matching parameters
+    qr_code_text = data.get('qr_code_text', '').strip()
+    qr_verified = int(data.get('qr_verified', 0))
+    if qr_code_text:
+        # Check if it starts with valid UPI payment prefix
+        if qr_code_text.startswith("upi://pay?") or qr_code_text.startswith("upi://pay"):
+            qr_verified = 1  # Valid UPI QR structure
+            
+            # Deep check: verify payee ID and payment amount inside the QR code
+            try:
+                from urllib.parse import urlparse, parse_qs
+                parsed = urlparse(qr_code_text)
+                query_params = parse_qs(parsed.query)
+                
+                # Check if payee address (pa) matches the user's entered UPI ID
+                qr_upi_id = query_params.get('pa', [''])[0].strip()
+                if qr_upi_id and upi_id and qr_upi_id.lower() != upi_id.lower():
+                    qr_verified = 0  # Swapped payee fraud check failed
+                    print(f"[SECURITY WARNING] Payee swap detected! QR payee={qr_upi_id}, Input={upi_id}")
+                    
+                # Check if embedded amount (am) matches the user's entered amount
+                qr_amount_str = query_params.get('am', [''])[0].strip()
+                if qr_amount_str and amount:
+                    try:
+                        qr_amount = float(qr_amount_str)
+                        if abs(qr_amount - amount) > 0.01:
+                            qr_verified = 0  # Amount alteration fraud check failed
+                            print(f"[SECURITY WARNING] Amount mismatch! QR amount={qr_amount}, Input={amount}")
+                    except ValueError:
+                        pass
+            except Exception as pe:
+                print(f"[WARNING] QR deep parsing failure: {pe}")
     
     try:
         model = joblib.load(os.path.join(os.path.dirname(__file__), "model.pkl"))
@@ -410,6 +461,11 @@ def predict_risk(current_user):
         score = 0.25 + 0.3 * (amount > 500) + 0.15 * device_risk + 0.3 * (location_risk > 0.6)
         score += 0.2 * (has_receipt == 0) + 0.25 * (qr_verified == 0) + 0.3 * (utr_valid == 0) + 0.2 * upi_id_risk
         score = min(max(score, 0.0), 1.0)
+        
+    # Post-inference security overrides: Mismatched payee or amount (qr_verified == 0 when QR was uploaded)
+    # is a confirmed fraud attempt (payee swap or alteration) and must be marked as High risk.
+    if qr_code_text and qr_verified == 0:
+        score = max(score, 0.85)
         
     # Classification logic
     if score < 0.3:
