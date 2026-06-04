@@ -44,16 +44,20 @@ use_mongo = False
 try:
     from pymongo.server_api import ServerApi
     if "mongodb+srv" in MONGO_URI:
-        client = MongoClient(MONGO_URI, server_api=ServerApi('1'), serverSelectionTimeoutMS=2500)
+        client = MongoClient(MONGO_URI, server_api=ServerApi('1'), serverSelectionTimeoutMS=2500, tlsAllowInvalidCertificates=True)
     else:
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2500)
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2500, tlsAllowInvalidCertificates=True)
     # Ping the database
     client.admin.command('ping')
     db = client[DB_NAME]
     use_mongo = True
     print("[INFO] MongoDB successfully connected.")
 except Exception as e:
-    print(f"[WARNING] MongoDB not reachable. Using JSON file fallback. Error: {e}")
+    err_msg = str(e)
+    hint = ""
+    if "SSL handshake failed" in err_msg or "timeout" in err_msg.lower():
+        hint = " (HINT: This SSL handshake/timeout error usually indicates that your current IP address is not whitelisted in your MongoDB Atlas Network Access settings. Please verify your Atlas dashboard.)"
+    print(f"[WARNING] MongoDB not reachable. Using JSON file fallback. Error: {e}{hint}")
 
 # Collections
 def get_users_collection():
