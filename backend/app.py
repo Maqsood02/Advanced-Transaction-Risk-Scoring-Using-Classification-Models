@@ -111,6 +111,15 @@ def request_otp():
         "expires": datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
     }
     
+    # Always print and save the OTP to a local log file for development and troubleshooting
+    try:
+        log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "otp_debug.log")
+        with open(log_path, "w") as f:
+            f.write(f"OTP Code for {email}: {otp_code}\n")
+        print(f"[OTP LOG] Generated OTP {otp_code} for {email} (saved to {log_path})")
+    except Exception as le:
+        print(f"[ERROR] Failed to write OTP to log file: {le}")
+
     import smtplib
     from email.mime.text import MIMEText
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
@@ -142,11 +151,12 @@ def request_otp():
             server.send_message(msg)
             server.quit()
             print(f"[SUCCESS] OTP email sent to {email}")
+            return jsonify({"message": "Verification code sent to your email. Please check your inbox."}), 200
         except Exception as e:
             print(f"[ERROR] Failed to send OTP email: {e}")
-            return jsonify({"error": "Failed to send verification email"}), 500
-            
-    return jsonify({"message": "Verification code sent to your email. Please check your inbox."}), 200
+            return jsonify({"message": "Verification code generated. Email delivery failed, please check 'otp_debug.log' at the project root."}), 200
+    else:
+        return jsonify({"message": "Verification code generated. Email service is offline, please check 'otp_debug.log' at the project root."}), 200
 
 @app.route('/api/register/verify-otp', methods=['POST'])
 def verify_otp():
@@ -443,6 +453,10 @@ def predict_risk(current_user):
     tx_return["utr_number"] = utr_number
     tx_return["upi_id"] = upi_id
     
+    # Convert _id object to string if it exists to prevent JSON serialization crash
+    if "_id" in tx_return:
+        tx_return["_id"] = str(tx_return["_id"])
+        
     return jsonify({
         "message": "Risk assessed successfully",
         "score": tx_return["risk_score"],

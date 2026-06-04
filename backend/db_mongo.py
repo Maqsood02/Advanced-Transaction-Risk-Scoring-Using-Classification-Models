@@ -12,7 +12,9 @@ DB_NAME = "transaction_risk_db"
 if os.environ.get("VERCEL"):
     FALLBACK_FILE = "/tmp/db_fallback.json"
 else:
-    FALLBACK_FILE = "db_fallback.json"
+    # Use absolute path to project root db_fallback.json to prevent folder path confusion
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    FALLBACK_FILE = os.path.abspath(os.path.join(base_dir, "..", "db_fallback.json"))
 
 _fallback_db = {
     "users": [],
