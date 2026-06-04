@@ -38,6 +38,45 @@ def save_fallback():
     except Exception:
         pass
 
+def migrate_fallback_to_mongodb():
+    if not use_mongo:
+        return
+    try:
+        # Migrate users
+        users_col = db["users"]
+        for u in _fallback_db.get("users", []):
+            existing = users_col.find_one({"username": u["username"]})
+            if not existing:
+                u_doc = u.copy()
+                if "_id" in u_doc:
+                    del u_doc["_id"]
+                users_col.insert_one(u_doc)
+                print(f"[MIGRATION] Migrated fallback user {u['username']} to MongoDB.")
+                
+        # Migrate transactions
+        txs_col = db["transactions"]
+        for t in _fallback_db.get("transactions", []):
+            existing = txs_col.find_one({"username": t["username"], "timestamp": t.get("timestamp")})
+            if not existing:
+                t_doc = t.copy()
+                if "_id" in t_doc:
+                    del t_doc["_id"]
+                txs_col.insert_one(t_doc)
+                print(f"[MIGRATION] Migrated fallback transaction for {t['username']} to MongoDB.")
+                
+        # Migrate audit logs
+        logs_col = db["audit_logs"]
+        for l in _fallback_db.get("audit_logs", []):
+            existing = logs_col.find_one({"username": l["username"], "timestamp": l.get("timestamp"), "action": l.get("action")})
+            if not existing:
+                l_doc = l.copy()
+                if "_id" in l_doc:
+                    del l_doc["_id"]
+                logs_col.insert_one(l_doc)
+                print(f"[MIGRATION] Migrated fallback audit log to MongoDB.")
+    except Exception as e:
+        print(f"[WARNING] Migration of fallback DB to MongoDB failed: {e}")
+
 load_fallback()
 
 use_mongo = False
@@ -52,6 +91,7 @@ try:
     db = client[DB_NAME]
     use_mongo = True
     print("[INFO] MongoDB successfully connected.")
+    migrate_fallback_to_mongodb()
 except Exception as e:
     err_msg = str(e)
     hint = ""
