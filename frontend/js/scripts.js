@@ -616,6 +616,30 @@ function validateStep(stepIndex) {
             amountInput.focus();
             return false;
         }
+
+        // Validate optional UTR Number if entered (must be exactly 12 digits)
+        const utrInput = document.getElementById('tx-utr');
+        if (utrInput && utrInput.value.trim() !== "") {
+            const utrVal = utrInput.value.trim();
+            const utrRegex = /^\d{12}$/;
+            if (!utrRegex.test(utrVal)) {
+                showNotification('UTR Number must be exactly 12 digits.', 'danger');
+                utrInput.focus();
+                return false;
+            }
+        }
+
+        // Validate optional UPI ID if entered (must be standard handle@provider format)
+        const upiInput = document.getElementById('tx-upi');
+        if (upiInput && upiInput.value.trim() !== "") {
+            const upiVal = upiInput.value.trim();
+            const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
+            if (!upiRegex.test(upiVal)) {
+                showNotification('Please enter a valid UPI ID (e.g. name@upi).', 'danger');
+                upiInput.focus();
+                return false;
+            }
+        }
     } else if (stepIndex === 1) {
         // Step 2 uploads are optional
         return true;
@@ -659,11 +683,71 @@ window.handleFileSelect = function(type) {
     
     if (input.files && input.files.length > 0) {
         const file = input.files[0];
-        info.innerText = `${file.name} (${formatBytes(file.size)})`;
-        dropzone.classList.add('has-file');
+        
+        if (type === 'qr') {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0, img.width, img.height);
+                    
+                    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    
+                    if (code) {
+                        const qrText = code.data;
+                        // Enforce that only valid UPI Payment QR codes (start with upi://pay) are accepted
+                        if (qrText.startsWith("upi://pay?") || qrText.startsWith("upi://pay")) {
+                            info.innerText = `${file.name} (Valid Payment QR)`;
+                            dropzone.classList.add('has-file');
+                            input.dataset.valid = "true";
+                            
+                            // Autofill the Merchant UPI ID if parsed
+                            try {
+                                const urlParams = new URLSearchParams(qrText.split('?')[1]);
+                                const upiId = urlParams.get('pa');
+                                if (upiId) {
+                                    const upiField = document.getElementById('tx-upi');
+                                    if (upiField) {
+                                        upiField.value = upiId;
+                                        showNotification('Autofilled UPI ID from payment QR code!', 'success');
+                                    }
+                                }
+                            } catch (err) {
+                                console.log("Failed to parse merchant UPI ID from QR parameters", err);
+                            }
+                        } else {
+                            showNotification('Invalid QR: Image does not contain a valid UPI payment QR code (upi://pay).', 'danger');
+                            input.value = '';
+                            info.innerText = 'No file selected';
+                            dropzone.classList.remove('has-file');
+                            input.dataset.valid = "false";
+                        }
+                    } else {
+                        showNotification('Invalid QR: Could not detect any QR code structure in the uploaded image.', 'danger');
+                        input.value = '';
+                        info.innerText = 'No file selected';
+                        dropzone.classList.remove('has-file');
+                        input.dataset.valid = "false";
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            info.innerText = `${file.name} (${formatBytes(file.size)})`;
+            dropzone.classList.add('has-file');
+        }
     } else {
         info.innerText = 'No file selected';
         dropzone.classList.remove('has-file');
+        if (type === 'qr') {
+            input.dataset.valid = "false";
+        }
     }
 };
 
