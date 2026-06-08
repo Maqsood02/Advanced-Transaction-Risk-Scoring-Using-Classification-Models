@@ -83,9 +83,9 @@ use_mongo = False
 try:
     from pymongo.server_api import ServerApi
     if "mongodb+srv" in MONGO_URI:
-        client = MongoClient(MONGO_URI, server_api=ServerApi('1'), serverSelectionTimeoutMS=2500, tlsAllowInvalidCertificates=True)
+        client = MongoClient(MONGO_URI, server_api=ServerApi('1'), serverSelectionTimeoutMS=800, tlsAllowInvalidCertificates=True)
     else:
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2500, tlsAllowInvalidCertificates=True)
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=800, tlsAllowInvalidCertificates=True)
     # Ping the database
     client.admin.command('ping')
     db = client[DB_NAME]
