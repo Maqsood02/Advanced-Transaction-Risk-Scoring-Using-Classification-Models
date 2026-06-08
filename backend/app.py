@@ -145,8 +145,11 @@ def request_otp():
             msg['From'] = f"ATRSC System <{smtp_user}>"
             msg['To'] = email
             
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()
+            if smtp_port == 465:
+                server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
+            else:
+                server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+                server.starttls()
             server.login(smtp_user, smtp_password)
             server.send_message(msg)
             server.quit()
@@ -154,9 +157,9 @@ def request_otp():
             return jsonify({"message": "Verification code sent to your email. Please check your inbox."}), 200
         except Exception as e:
             print(f"[ERROR] Failed to send OTP email: {e}")
-            return jsonify({"message": "Verification code generated. Email delivery failed, please check 'otp_debug.log' at the project root."}), 200
+            return jsonify({"error": f"Failed to send email: {str(e)}. You can find your verification code in 'otp_debug.log' at the project root."}), 500
     else:
-        return jsonify({"message": "Verification code generated. Email service is offline, please check 'otp_debug.log' at the project root."}), 200
+        return jsonify({"error": "Email service is offline (credentials not configured). You can find your verification code in 'otp_debug.log' at the project root."}), 500
 
 @app.route('/api/register/verify-otp', methods=['POST'])
 def verify_otp():
@@ -221,8 +224,11 @@ def verify_otp():
             msg['From'] = f"ATRSC System <{smtp_user}>"
             msg['To'] = email
             
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()
+            if smtp_port == 465:
+                server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
+            else:
+                server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+                server.starttls()
             server.login(smtp_user, smtp_password)
             server.send_message(msg)
             server.quit()
@@ -248,12 +254,6 @@ def forgot_password():
     # Generate a temporary new password
     import string, random
     new_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-    hashed_pwd = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    
-    user["password"] = hashed_pwd
-    db.delete_user_by_username(user["username"])
-    db.add_user(user)
-    db.add_audit_log("User requested password reset", user["username"], "success")
     
     import smtplib
     from email.mime.text import MIMEText
@@ -280,15 +280,27 @@ def forgot_password():
             msg['From'] = f"ATRSC System <{smtp_user}>"
             msg['To'] = email
             
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()
+            if smtp_port == 465:
+                server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
+            else:
+                server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+                server.starttls()
             server.login(smtp_user, smtp_password)
             server.send_message(msg)
             server.quit()
             print(f"[SUCCESS] Password reset email sent to {email}")
         except Exception as e:
             print(f"[ERROR] Failed to send password reset email: {e}")
-            return jsonify({"error": "Failed to send reset email. Please try again later."}), 500
+            return jsonify({"error": f"Failed to send reset email: {str(e)}. Please try again later."}), 500
+    else:
+        return jsonify({"error": "Email service is offline (credentials not configured)."}), 500
+        
+    # Only modify the user's password in the database if the email was successfully sent
+    hashed_pwd = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    user["password"] = hashed_pwd
+    db.delete_user_by_username(user["username"])
+    db.add_user(user)
+    db.add_audit_log("User requested password reset", user["username"], "success")
             
     return jsonify({"message": "If that email exists, a reset link has been sent."}), 200
 
@@ -348,8 +360,11 @@ def login():
                     msg['From'] = f"ATRSC System <{smtp_user}>"
                     msg['To'] = email_to
                     
-                    server = smtplib.SMTP(smtp_server, smtp_port)
-                    server.starttls()
+                    if smtp_port == 465:
+                        server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
+                    else:
+                        server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+                        server.starttls()
                     server.login(smtp_user, smtp_password)
                     server.send_message(msg)
                     server.quit()

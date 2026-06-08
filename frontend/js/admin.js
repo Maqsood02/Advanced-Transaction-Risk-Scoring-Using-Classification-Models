@@ -3,7 +3,9 @@ const adminToken = localStorage.getItem('token') || '';
 const adminRole = localStorage.getItem('role') || '';
 const currentAdminUsername = localStorage.getItem('username') || '';
 
-const API_BASE = window.location.origin;
+const API_BASE = window.location.port && window.location.port !== '5000'
+    ? `${window.location.protocol}//${window.location.hostname}:5000`
+    : window.location.origin;
 
 // References to live instantiated charts to prevent layout duplicates
 let rocChartInstance = null;

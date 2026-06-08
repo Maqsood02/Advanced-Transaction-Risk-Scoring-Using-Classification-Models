@@ -3,7 +3,9 @@ let userToken = localStorage.getItem('token') || '';
 let userRole = localStorage.getItem('role') || '';
 let currentUsername = localStorage.getItem('username') || '';
 
-const API_BASE = window.location.origin;
+const API_BASE = window.location.port && window.location.port !== '5000'
+    ? `${window.location.protocol}//${window.location.hostname}:5000`
+    : window.location.origin;
 
 // Indian States and Districts Data Map
 const indianStatesAndDistricts = {
