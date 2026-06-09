@@ -13,6 +13,103 @@ let riskChartInstance = null;
 let importanceChartInstance = null;
 let matrixChartInstance = null;
 
+let adminMetricsCached = null;
+let currentMetricsView = 'upi';
+
+window.switchAdminMetricsView = function(view) {
+    currentMetricsView = view;
+    renderPerformanceMetrics();
+};
+
+function renderPerformanceMetrics() {
+    if (!adminMetricsCached) return;
+    
+    const mp = currentMetricsView === 'credit_card' 
+        ? (adminMetricsCached.model_performance_cc || {}) 
+        : (adminMetricsCached.model_performance_upi || {});
+        
+    document.getElementById('sys-accuracy').innerText = `${(mp.accuracy * 100 || 75.0).toFixed(1)}%`;
+    document.getElementById('sys-p-r').innerText = `${(mp.precision * 100 || 30.0).toFixed(1)}% / ${(mp.recall * 100 || 30.0).toFixed(1)}%`;
+    document.getElementById('sys-auc').innerText = (mp.auc || 0.70).toFixed(2);
+    document.getElementById('sys-fraud').innerText = `${adminMetricsCached.fraud_detected_pct || 0}%`;
+    
+    initCharts(adminMetricsCached);
+}
+
+// Custom Drag and Drop and UI utilities
+window.triggerFileInput = function(id) {
+    document.getElementById(id).click();
+};
+
+window.handleCSVSelect = function() {
+    const input = document.getElementById('csv-file-input');
+    const info = document.getElementById('file-info-csv');
+    const dropzone = document.getElementById('dropzone-csv');
+    
+    if (input.files && input.files.length > 0) {
+        const file = input.files[0];
+        info.innerText = `${file.name} (${formatBytes(file.size)})`;
+        dropzone.classList.add('has-file');
+    } else {
+        info.innerText = 'No file selected';
+        dropzone.classList.remove('has-file');
+    }
+};
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+window.togglePasswordVisibility = function(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.name = 'eye-off-outline';
+    } else {
+        input.type = 'password';
+        icon.name = 'eye-outline';
+    }
+};
+
+function setupCSVDragAndDrop() {
+    const el = document.getElementById('dropzone-csv');
+    const input = document.getElementById('csv-file-input');
+    if (!el || !input) return;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        el.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        el.addEventListener(eventName, () => {
+            el.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        el.addEventListener(eventName, () => {
+            el.classList.remove('dragover');
+        }, false);
+    });
+
+    el.addEventListener('drop', e => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length > 0) {
+            input.files = files;
+            window.handleCSVSelect();
+        }
+    }, false);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Check authorization
     if (!adminToken || adminRole !== 'admin') {
@@ -22,7 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Default view setup
-    switchAdminTab('metrics');
+    switchAdminTab('analytics');
+    setupCSVDragAndDrop();
 });
 
 // Admin Tab View management switcher
@@ -33,39 +131,30 @@ function switchAdminTab(tab) {
     tabs.forEach(t => t.style.display = 'none');
     links.forEach(l => l.classList.remove('active'));
 
-    if (tab === 'metrics') {
-        document.getElementById('tab-metrics').style.display = 'block';
-        links[0].classList.add('active');
-        switchAnalyticsSection('visuals', document.getElementById('sub-nav-btn-visuals'));
-        fetchAdminMetricsAndLoadVisuals();
-    } else if (tab === 'users') {
-        document.getElementById('tab-users').style.display = 'block';
-        links[1].classList.add('active');
-        fetchAdminUsers();
-    } else {
-        document.getElementById('tab-audit').style.display = 'block';
-        links[2].classList.add('active');
-        fetchAdminAuditLogs();
-    }
-}
+    const tabMap = {
+        'analytics': { id: 'tab-analytics', index: 0, load: fetchAdminMetricsAndLoadVisuals },
+        'transactions': { id: 'tab-transactions', index: 1, load: fetchAdminTransactions },
+        'users': { id: 'tab-users', index: 2, load: fetchAdminUsers },
+        'train': { id: 'tab-train', index: 3 },
+        'upload': { id: 'tab-upload', index: 4 },
+        'audit': { id: 'tab-audit', index: 5, load: fetchAdminAuditLogs },
+        'reset': { id: 'tab-reset', index: 6 }
+    };
 
-// Analytics Feature category switcher function
-function switchAnalyticsSection(section, btn) {
-    const sections = document.querySelectorAll('.analytics-sub-section');
-    sections.forEach(s => s.style.display = 'none');
-
-    // Remove active-sub-tab from all sub tabs inside the metrics tab
-    const subTabs = document.querySelectorAll('#tab-metrics .btn-outline');
-    subTabs.forEach(b => b.classList.remove('active-sub-tab'));
-
-    // Display the matching sub section
-    const target = document.getElementById(`analytics-section-${section}`);
+    const target = tabMap[tab];
     if (target) {
-        target.style.display = 'block';
-    }
-
-    if (btn) {
-        btn.classList.add('active-sub-tab');
+        const el = document.getElementById(target.id);
+        if (el) el.style.display = 'block';
+        if (links[target.index]) links[target.index].classList.add('active');
+        if (target.load) {
+            target.load();
+        }
+        if (tab === 'reset') {
+            const resetUsernameInput = document.getElementById('admin-new-username');
+            if (resetUsernameInput) {
+                resetUsernameInput.value = localStorage.getItem('username') || 'admin';
+            }
+        }
     }
 }
 
@@ -115,15 +204,8 @@ async function fetchAdminMetricsAndLoadVisuals() {
             headers: { 'Authorization': `Bearer ${adminToken}` }
         });
 
-        // Apply dynamic metric counts
-        const mp = data.model_performance || {};
-        document.getElementById('sys-accuracy').innerText = `${(mp.accuracy * 100 || 76.8).toFixed(1)}%`;
-        document.getElementById('sys-p-r').innerText = `${(mp.precision * 100 || 30.6).toFixed(1)}% / ${(mp.recall * 100 || 27.5).toFixed(1)}%`;
-        document.getElementById('sys-auc').innerText = (mp.auc || 0.71).toFixed(2);
-        document.getElementById('sys-fraud').innerText = `${data.fraud_detected_pct || 0}%`;
-
-        // Render graphical chart visualizers
-        initCharts(data);
+        adminMetricsCached = data;
+        renderPerformanceMetrics();
     } catch (err) {
         showNotification(err.message, 'danger');
     }
@@ -131,19 +213,45 @@ async function fetchAdminMetricsAndLoadVisuals() {
 
 // Complete visualizations rendering function via Chart.js CDN
 function initCharts(data) {
-    const rd = data.risk_distribution || { Low: 0, Medium: 0, High: 0 };
+    const mp = currentMetricsView === 'credit_card' 
+        ? (data.model_performance_cc || {}) 
+        : (data.model_performance_upi || {});
+        
+    let rd = currentMetricsView === 'credit_card'
+        ? (data.risk_distribution_cc || { Low: 0, Medium: 0, High: 0 })
+        : (data.risk_distribution_upi || { Low: 0, Medium: 0, High: 0 });
+        
+    if ((rd.Low || 0) === 0 && (rd.Medium || 0) === 0 && (rd.High || 0) === 0) {
+        rd = data.risk_distribution || { Low: 1, Medium: 0, High: 0 };
+    }
+    
+    const gridColor = '#f1f5f9';
+    const tickColor = '#64748b';
+    const labelColor = '#0f172a';
+    const activeBorderColor = '#ffffff';
 
     // 1. ROC & AUC Curve Chart
     const rocCtx = document.getElementById('rocCurveChart').getContext('2d');
     if (rocChartInstance) rocChartInstance.destroy();
+    
+    const rocLabels = mp.roc_curve && mp.roc_curve.fpr 
+        ? mp.roc_curve.fpr 
+        : [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.85, 1];
+        
+    const rocData = mp.roc_curve && mp.roc_curve.tpr 
+        ? mp.roc_curve.tpr 
+        : (currentMetricsView === 'credit_card' 
+            ? [0, 0.35, 0.55, 0.7, 0.8, 0.88, 0.96, 1] 
+            : [0, 0.28, 0.45, 0.6, 0.72, 0.81, 0.93, 1]);
+
     rocChartInstance = new Chart(rocCtx, {
         type: 'line',
         data: {
-            labels: [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.85, 1],
+            labels: rocLabels,
             datasets: [
                 {
                     label: 'True Positive Rate vs. False Positive Rate',
-                    data: [0, 0.28, 0.45, 0.6, 0.72, 0.81, 0.93, 1],
+                    data: rocData,
                     borderColor: '#2563eb',
                     backgroundColor: 'rgba(37, 99, 235, 0.05)',
                     fill: true,
@@ -152,7 +260,7 @@ function initCharts(data) {
                 },
                 {
                     label: 'Random Guess Threshold',
-                    data: [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.85, 1],
+                    data: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
                     borderColor: '#cbd5e1',
                     borderDash: [5, 5],
                     fill: false,
@@ -164,10 +272,10 @@ function initCharts(data) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' } },
-                y: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' } }
+                x: { grid: { color: gridColor }, ticks: { color: tickColor } },
+                y: { grid: { color: gridColor }, ticks: { color: tickColor } }
             },
-            plugins: { legend: { labels: { color: '#0f172a' } } }
+            plugins: { legend: { labels: { color: labelColor } } }
         }
     });
 
@@ -181,28 +289,38 @@ function initCharts(data) {
             datasets: [{
                 data: [rd.Low || 1, rd.Medium || 0, rd.High || 0],
                 backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-                borderColor: ['#ffffff', '#ffffff', '#ffffff'],
+                borderColor: [activeBorderColor, activeBorderColor, activeBorderColor],
                 borderWidth: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { color: '#0f172a' } } }
+            plugins: { legend: { position: 'bottom', labels: { color: labelColor } } }
         }
     });
 
     // 3. Random Forest Feature Importance Chart
     const impCtx = document.getElementById('importanceChart').getContext('2d');
     if (importanceChartInstance) importanceChartInstance.destroy();
+    
+    let labels, impData;
+    if (currentMetricsView === 'credit_card') {
+        labels = ['Amount', 'Hour of Day', 'New Device Flag', 'Location Score', 'CVV Verification', 'Expiry Check', 'ZIP Verification', 'Velocity Risk'];
+        impData = [0.22, 0.15, 0.10, 0.12, 0.18, 0.11, 0.08, 0.04];
+    } else {
+        labels = ['Amount', 'Hour of Day', 'New Device Flag', 'Location Score', 'Receipt Upload', 'QR Match', 'UTR Verification', 'UPI ID Risk'];
+        impData = [0.25, 0.12, 0.08, 0.15, 0.10, 0.05, 0.12, 0.13];
+    }
+    
     importanceChartInstance = new Chart(impCtx, {
         type: 'bar',
         data: {
-            labels: ['Transaction Amount', 'Hour of Day', 'New Device Flag', 'Location Trust Score'],
+            labels: labels,
             datasets: [{
                 label: 'Normalized Feature Importance Score',
-                data: [0.38, 0.21, 0.15, 0.26],
-                backgroundColor: ['#3b82f6', '#2563eb', '#6366f1', '#f43f5e'],
+                data: impData,
+                backgroundColor: ['#3b82f6', '#2563eb', '#6366f1', '#f43f5e', '#a855f7', '#ec4899', '#f97316', '#14b8a6'],
                 borderWidth: 0,
                 borderRadius: 8
             }]
@@ -212,8 +330,8 @@ function initCharts(data) {
             maintainAspectRatio: false,
             indexAxis: 'y',
             scales: {
-                x: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' } },
-                y: { grid: { display: false }, ticks: { color: '#0f172a' } }
+                x: { grid: { color: gridColor }, ticks: { color: tickColor } },
+                y: { grid: { display: false }, ticks: { color: labelColor } }
             },
             plugins: { legend: { display: false } }
         }
@@ -222,15 +340,21 @@ function initCharts(data) {
     // 4. Matrix Evaluation Chart (Scatter / Confused Points)
     const matCtx = document.getElementById('matrixChart').getContext('2d');
     if (matrixChartInstance) matrixChartInstance.destroy();
+    
+    const matrixData = mp.confusion_matrix || 
+        (currentMetricsView === 'credit_card' 
+            ? [307, 1, 6, 86] 
+            : [211, 4, 2, 183]);
+
     matrixChartInstance = new Chart(matCtx, {
         type: 'bar',
         data: {
             labels: ['True Negative', 'False Positive', 'False Negative', 'True Positive'],
             datasets: [{
                 label: 'Classification Sample Units',
-                data: [282, 36, 29, 53],
+                data: matrixData,
                 backgroundColor: ['#34d399', '#fcd34d', '#fca5a5', '#10b981'],
-                borderColor: ['#10b981', '#f59e0b', '#ef4444', '#10b981'],
+                borderColor: [activeBorderColor, activeBorderColor, activeBorderColor, activeBorderColor],
                 borderWidth: 1,
                 borderRadius: 8
             }]
@@ -239,8 +363,8 @@ function initCharts(data) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { grid: { display: false }, ticks: { color: '#0f172a' } },
-                y: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' } }
+                x: { grid: { display: false }, ticks: { color: labelColor } },
+                y: { grid: { color: gridColor }, ticks: { color: tickColor } }
             },
             plugins: { legend: { display: false } }
         }
@@ -461,29 +585,133 @@ async function handleCSVUpload(e) {
     }
 }
 
-// Admin Password Reset Handler
-async function handleAdminPasswordReset(e) {
+// Admin Credentials Reset Handler
+async function handleAdminCredentialsReset(e) {
     e.preventDefault();
+    const newUsername = document.getElementById('admin-new-username').value.trim();
     const newPassword = document.getElementById('admin-new-password').value.trim();
+    const btn = e.target.querySelector('button[type="submit"]');
+
+    if (btn) btn.disabled = true;
 
     try {
-        const response = await fetch(`${API_BASE}/api/admin/password/reset`, {
+        const response = await fetch(`${API_BASE}/api/admin/credentials/reset`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${adminToken}`
             },
-            body: JSON.stringify({ password: newPassword })
+            body: JSON.stringify({
+                username: newUsername,
+                password: newPassword || undefined
+            })
         });
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to update password');
+            throw new Error(data.error || 'Failed to update credentials');
         }
 
-        showNotification('Administrator password updated successfully!');
-        document.getElementById('admin-password-reset-form').reset();
+        showNotification('Administrator credentials updated successfully!');
+        
+        if (data.token) {
+            localStorage.setItem('token', data.token);
+        }
+        if (data.username) {
+            localStorage.setItem('username', data.username);
+            // Refresh current variables
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            document.getElementById('admin-new-password').value = '';
+        }
+    } catch (err) {
+        showNotification(err.message, 'danger');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+// ==================== ALL TRANSACTIONS TAB ====================
+let allTransactionsCached = [];
+
+async function fetchAdminTransactions() {
+    try {
+        const response = await fetch(`${API_BASE}/api/transactions`, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch transaction logs');
+        }
+
+        allTransactionsCached = data || [];
+        filterAdminTransactions();
     } catch (err) {
         showNotification(err.message, 'danger');
     }
 }
+
+window.filterAdminTransactions = function() {
+    const riskFilter = document.getElementById('filter-risk-level').value;
+    const typeFilter = document.getElementById('filter-tx-type').value;
+    const tbody = document.querySelector('#transactions-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    let filtered = allTransactionsCached;
+    if (riskFilter) {
+        filtered = filtered.filter(t => t.risk_level === riskFilter);
+    }
+    if (typeFilter) {
+        filtered = filtered.filter(t => t.tx_type === typeFilter);
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; color: var(--text-secondary); padding:20px;">No transaction logs found matching filters.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Sort by timestamp descending
+    filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    filtered.forEach(t => {
+        const tr = document.createElement('tr');
+        
+        let riskClass = 'level-Low';
+        if (t.risk_level === 'Medium') riskClass = 'level-Medium';
+        if (t.risk_level === 'High') riskClass = 'level-High';
+
+        const typeBadge = t.tx_type === 'upi' 
+            ? `<span class="badge" style="background: rgba(37, 99, 235, 0.1); color: var(--primary-color); border: 1px solid rgba(37, 99, 235, 0.2);">UPI</span>`
+            : `<span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-color); border: 1px solid rgba(139, 92, 246, 0.2);">CARD</span>`;
+
+        let identifier = '';
+        let reference = '';
+        if (t.tx_type === 'upi') {
+            identifier = t.upi_id || 'N/A';
+            reference = t.utr_number || 'N/A';
+        } else {
+            identifier = t.cardholder_name || 'N/A';
+            reference = t.card_number || 'N/A';
+        }
+
+        tr.innerHTML = `
+            <td><strong style="color:var(--text-primary)">${t.username || 'System'}</strong></td>
+            <td>${typeBadge}</td>
+            <td><strong>$${(t.amount || 0).toFixed(2)}</strong></td>
+            <td style="font-family: monospace; font-size: 0.9rem;">${identifier}</td>
+            <td style="font-family: monospace; font-size: 0.9rem;">${reference}</td>
+            <td><strong>${(t.risk_score || 0).toFixed(4)}</strong></td>
+            <td><span class="badge ${riskClass}">${t.risk_level}</span></td>
+            <td style="color:var(--text-secondary); font-size:0.85rem">${new Date(t.timestamp).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+};

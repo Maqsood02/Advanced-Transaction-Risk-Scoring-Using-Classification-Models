@@ -2,10 +2,53 @@
 let userToken = localStorage.getItem('token') || '';
 let userRole = localStorage.getItem('role') || '';
 let currentUsername = localStorage.getItem('username') || '';
+let currentTxType = 'upi';
 
 const API_BASE = window.location.port && window.location.port !== '5000'
     ? `${window.location.protocol}//${window.location.hostname}:5000`
     : window.location.origin;
+
+window.switchAssessmentType = function(type) {
+    currentTxType = type;
+    
+    const upiDetails = document.getElementById('upi-details-fields');
+    const ccDetails = document.getElementById('cc-details-fields');
+    const upiUploads = document.getElementById('upi-uploads-fields');
+    const ccSecurity = document.getElementById('cc-security-fields');
+    
+    if (type === 'upi') {
+        if (upiDetails) upiDetails.style.display = 'block';
+        if (ccDetails) ccDetails.style.display = 'none';
+        if (upiUploads) upiUploads.style.display = 'block';
+        if (ccSecurity) ccSecurity.style.display = 'none';
+    } else {
+        if (upiDetails) upiDetails.style.display = 'none';
+        if (ccDetails) ccDetails.style.display = 'block';
+        if (upiUploads) upiUploads.style.display = 'none';
+        if (ccSecurity) ccSecurity.style.display = 'block';
+    }
+    
+    // Reset wizard back to step 1
+    goToWizardStep(0);
+};
+
+window.updateVelocityRiskLabel = function(val) {
+    const score = parseFloat(val);
+    const display = document.getElementById('velocity-risk-readout');
+    if (!display) return;
+    display.innerText = score.toFixed(2);
+    
+    if (score < 0.3) {
+        display.style.background = '#d1fae5';
+        display.style.color = 'var(--success-color)';
+    } else if (score <= 0.7) {
+        display.style.background = '#fef3c7';
+        display.style.color = 'var(--warning-color)';
+    } else {
+        display.style.background = '#fee2e2';
+        display.style.color = 'var(--danger-color)';
+    }
+};
 
 // Indian States and Districts Data Map
 const indianStatesAndDistricts = {
@@ -401,11 +444,24 @@ function renderTransactionsTable(transactions) {
     }
 
     transactions.forEach(t => {
+        const isCC = t.tx_type === 'credit_card';
+        const typeIcon = isCC ? 'card-outline' : 'phone-portrait-outline';
+        const typeColor = isCC ? 'var(--accent-color)' : 'var(--primary-color)';
+        const typeText = isCC ? 'Card' : 'UPI';
+        
+        const refVal = isCC ? (t.card_number || '<span style="color:#aaa">None</span>') : (t.utr_number ? t.utr_number : '<span style="color:#aaa">None</span>');
+        const identVal = isCC ? (t.cardholder_name || '<span style="color:#aaa">None</span>') : (t.upi_id ? t.upi_id : '<span style="color:#aaa">None</span>');
+        
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td>
+                <span style="display:flex; align-items:center; gap:5px; font-weight:600; color:${typeColor}">
+                    <ion-icon name="${typeIcon}"></ion-icon> ${typeText}
+                </span>
+            </td>
             <td>₹${parseFloat(t.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-            <td>${t.utr_number ? t.utr_number : '<span style="color:#aaa">None</span>'}</td>
-            <td>${t.upi_id ? t.upi_id : '<span style="color:#aaa">None</span>'}</td>
+            <td>${refVal}</td>
+            <td>${identVal}</td>
             <td><strong style="color:var(--primary-color)">${t.risk_score}</strong></td>
             <td>
                 <span class="badge level-${t.risk_level}">${t.risk_level} Risk</span>
@@ -431,23 +487,59 @@ function computeUserMetrics(transactions) {
 async function handlePrediction(e) {
     e.preventDefault();
     const amount = document.getElementById('tx-amount').value;
-    const utr_number = document.getElementById('tx-utr').value;
-    const upi_id = document.getElementById('tx-upi').value;
-    const qr_upload = document.getElementById('tx-qr-upload').files.length > 0;
-    const receipt_upload = document.getElementById('tx-receipt-upload').files.length > 0;
-    
-    const has_receipt = receipt_upload ? 1 : 0;
-    const utr_valid = utr_number.length >= 8 ? 1 : 0;
-    
-    // Get the decoded QR Code text if uploaded
-    const qr_code_text = document.getElementById('tx-qr-upload').dataset.upiUri || '';
-    const qr_verified = qr_upload && document.getElementById('tx-qr-upload').dataset.valid === "true" ? 1 : 0;
-
     const hour_of_day = document.getElementById('tx-hour').value;
     const device_risk = document.getElementById('tx-device-risk').value;
     const location_risk = document.getElementById('tx-loc-risk').value;
     const location = document.getElementById('tx-location').value;
     const device_name = document.getElementById('tx-device-name').value;
+    const receipt_upload = document.getElementById('tx-receipt-upload').files.length > 0;
+    const has_receipt = receipt_upload ? 1 : 0;
+
+    let payload = {
+        tx_type: currentTxType,
+        amount,
+        hour_of_day,
+        device_risk,
+        location_risk,
+        location,
+        device_name,
+        has_receipt
+    };
+
+    if (currentTxType === 'upi') {
+        const utr_number = document.getElementById('tx-utr').value;
+        const upi_id = document.getElementById('tx-upi').value;
+        const qr_upload = document.getElementById('tx-qr-upload').files.length > 0;
+        const utr_valid = utr_number.length >= 8 ? 1 : 0;
+        const qr_code_text = document.getElementById('tx-qr-upload').dataset.upiUri || '';
+        const qr_verified = qr_upload && document.getElementById('tx-qr-upload').dataset.valid === "true" ? 1 : 0;
+
+        payload.utr_number = utr_number;
+        payload.upi_id = upi_id;
+        payload.utr_valid = utr_valid;
+        payload.qr_code_text = qr_code_text;
+        payload.qr_verified = qr_verified;
+    } else {
+        const card_number = document.getElementById('tx-card-number').value.replace(/\s+/g, '');
+        const cardholder_name = document.getElementById('tx-cardholder').value.trim();
+        const expiry_month = document.getElementById('tx-expiry-month').value;
+        const expiry_year = document.getElementById('tx-expiry-year').value;
+        const billing_zip = document.getElementById('tx-billing-zip').value.trim();
+
+        const cvv_match = document.querySelector('input[name="cvv-match-group"]:checked').value;
+        const expiry_valid = document.querySelector('input[name="expiry-valid-group"]:checked').value;
+        const billing_zip_match = document.querySelector('input[name="zip-match-group"]:checked').value;
+        const velocity_risk = document.getElementById('tx-velocity-risk').value;
+
+        payload.card_number = card_number;
+        payload.cardholder_name = cardholder_name;
+        payload.expiry_date = `${expiry_month}/${expiry_year}`;
+        payload.billing_zip = billing_zip;
+        payload.cvv_match = cvv_match;
+        payload.expiry_valid = expiry_valid;
+        payload.billing_zip_match = billing_zip_match;
+        payload.velocity_risk = velocity_risk;
+    }
 
     const btn = document.getElementById('btn-predict');
     btn.disabled = true;
@@ -460,7 +552,7 @@ async function handlePrediction(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${userToken}`
             },
-            body: JSON.stringify({ amount, utr_number, upi_id, has_receipt, utr_valid, hour_of_day, device_risk, location_risk, location, device_name, qr_code_text, qr_verified })
+            body: JSON.stringify(payload)
         });
         const data = await response.json();
 
@@ -487,26 +579,37 @@ async function handlePrediction(e) {
 
         // Clear only non-reusable inputs
         document.getElementById('tx-amount').value = '';
-        document.getElementById('tx-utr').value = '';
-        document.getElementById('tx-upi').value = '';
-        const qrUploadInput = document.getElementById('tx-qr-upload');
-        if (qrUploadInput) {
-            qrUploadInput.value = '';
-            qrUploadInput.dataset.upiUri = '';
-            qrUploadInput.dataset.valid = 'false';
-        }
         document.getElementById('tx-receipt-upload').value = '';
+        
+        if (currentTxType === 'upi') {
+            document.getElementById('tx-utr').value = '';
+            document.getElementById('tx-upi').value = '';
+            const qrUploadInput = document.getElementById('tx-qr-upload');
+            if (qrUploadInput) {
+                qrUploadInput.value = '';
+                qrUploadInput.dataset.upiUri = '';
+                qrUploadInput.dataset.valid = 'false';
+            }
+        } else {
+            document.getElementById('tx-card-number').value = '';
+            document.getElementById('tx-cardholder').value = '';
+            document.getElementById('tx-expiry-month').value = '';
+            document.getElementById('tx-expiry-year').value = '';
+            document.getElementById('tx-billing-zip').value = '';
+        }
 
         // Reset dropzones visual state
         const dropzoneQr = document.getElementById('dropzone-qr');
         const dropzoneReceipt = document.getElementById('dropzone-receipt');
         if (dropzoneQr) {
             dropzoneQr.classList.remove('has-file');
-            document.getElementById('file-info-qr').innerText = 'No file selected';
+            const fileInfoQr = document.getElementById('file-info-qr');
+            if (fileInfoQr) fileInfoQr.innerText = 'No file selected';
         }
         if (dropzoneReceipt) {
             dropzoneReceipt.classList.remove('has-file');
-            document.getElementById('file-info-receipt').innerText = 'No file selected';
+            const fileInfoReceipt = document.getElementById('file-info-receipt');
+            if (fileInfoReceipt) fileInfoReceipt.innerText = 'No file selected';
         }
 
         // Return user to Step 1 (Details) on wizard
@@ -626,31 +729,59 @@ function validateStep(stepIndex) {
             return false;
         }
 
-        // Validate optional UTR Number if entered (must be exactly 12 digits)
-        const utrInput = document.getElementById('tx-utr');
-        if (utrInput && utrInput.value.trim() !== "") {
-            const utrVal = utrInput.value.trim();
-            const utrRegex = /^\d{12}$/;
-            if (!utrRegex.test(utrVal)) {
-                showNotification('UTR Number must be exactly 12 digits.', 'danger');
-                utrInput.focus();
+        if (currentTxType === 'upi') {
+            const utrInput = document.getElementById('tx-utr');
+            if (utrInput && utrInput.value.trim() !== "") {
+                const utrVal = utrInput.value.trim();
+                const utrRegex = /^\d{12}$/;
+                if (!utrRegex.test(utrVal)) {
+                    showNotification('UTR Number must be exactly 12 digits.', 'danger');
+                    utrInput.focus();
+                    return false;
+                }
+            }
+
+            const upiInput = document.getElementById('tx-upi');
+            if (upiInput && upiInput.value.trim() !== "") {
+                const upiVal = upiInput.value.trim();
+                const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
+                if (!upiRegex.test(upiVal)) {
+                    showNotification('Please enter a valid UPI ID (e.g. name@upi).', 'danger');
+                    upiInput.focus();
+                    return false;
+                }
+            }
+        } else {
+            const cardInput = document.getElementById('tx-card-number');
+            const cardVal = cardInput.value.replace(/\s+/g, '');
+            if (!/^\d{15,16}$/.test(cardVal)) {
+                showNotification('Please enter a valid 15 or 16 digit Card Number.', 'danger');
+                cardInput.focus();
                 return false;
             }
-        }
 
-        // Validate optional UPI ID if entered (must be standard handle@provider format)
-        const upiInput = document.getElementById('tx-upi');
-        if (upiInput && upiInput.value.trim() !== "") {
-            const upiVal = upiInput.value.trim();
-            const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
-            if (!upiRegex.test(upiVal)) {
-                showNotification('Please enter a valid UPI ID (e.g. name@upi).', 'danger');
-                upiInput.focus();
+            const holderInput = document.getElementById('tx-cardholder');
+            if (!holderInput.value.trim()) {
+                showNotification('Cardholder Name is required.', 'danger');
+                holderInput.focus();
+                return false;
+            }
+
+            const monthSelect = document.getElementById('tx-expiry-month');
+            const yearSelect = document.getElementById('tx-expiry-year');
+            if (!monthSelect.value || !yearSelect.value) {
+                showNotification('Please select card expiry month and year.', 'danger');
+                return false;
+            }
+
+            const zipInput = document.getElementById('tx-billing-zip');
+            if (!/^\d{6}$/.test(zipInput.value.trim())) {
+                showNotification('Please enter a valid 6-digit billing ZIP code.', 'danger');
+                zipInput.focus();
                 return false;
             }
         }
     } else if (stepIndex === 1) {
-        // Step 2 uploads are optional
         return true;
     } else if (stepIndex === 2) {
         const stateSelect = document.getElementById('tx-state');
@@ -931,5 +1062,11 @@ function detectDeviceAndContext() {
         if (locInput) {
             locInput.value = "Mumbai City, Maharashtra";
         }
+    }
+
+    // 5. Default CC velocity risk settings
+    const velSlider = document.getElementById('tx-velocity-risk');
+    if (velSlider) {
+        updateVelocityRiskLabel(velSlider.value);
     }
 }

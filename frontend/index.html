@@ -184,6 +184,21 @@
                         New Risk Assessment
                     </h3>
 
+                    <!-- Switching System Segmented Control -->
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label>Assessment Model</label>
+                        <div class="segmented-control" id="assessment-type-switcher">
+                            <input type="radio" id="type-upi" name="assessment-type" value="upi" checked onchange="switchAssessmentType('upi')">
+                            <label for="type-upi" class="segmented-option">
+                                <ion-icon name="phone-portrait-outline"></ion-icon> UPI Transaction
+                            </label>
+                            <input type="radio" id="type-cc" name="assessment-type" value="credit_card" onchange="switchAssessmentType('credit_card')">
+                            <label for="type-cc" class="segmented-option">
+                                <ion-icon name="card-outline"></ion-icon> Credit Card
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Stepper Progress Bar -->
                     <div class="stepper-wrapper">
                         <div class="stepper-step active" id="step-ind-0" onclick="goToWizardStep(0)">
@@ -213,36 +228,99 @@
                                 </div>
                                 <span class="form-help-text">Enter transaction amount in INR</span>
                             </div>
-                            <div class="form-group">
-                                <label for="tx-utr">UTR Number</label>
-                                <div class="input-with-icon">
-                                    <ion-icon name="key-outline" class="input-icon"></ion-icon>
-                                    <input type="text" id="tx-utr" class="form-control" placeholder="12-digit UTR (Optional)">
+                            <div id="upi-details-fields">
+                                <div class="form-group">
+                                    <label for="tx-utr">UTR Number</label>
+                                    <div class="input-with-icon">
+                                        <ion-icon name="key-outline" class="input-icon"></ion-icon>
+                                        <input type="text" id="tx-utr" class="form-control" placeholder="12-digit UTR (Optional)">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tx-upi">UPI ID</label>
+                                    <div class="input-with-icon">
+                                        <ion-icon name="at-outline" class="input-icon"></ion-icon>
+                                        <input type="text" id="tx-upi" class="form-control" placeholder="example@upi (Optional)">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label for="tx-upi">UPI ID</label>
-                                <div class="input-with-icon">
-                                    <ion-icon name="at-outline" class="input-icon"></ion-icon>
-                                    <input type="text" id="tx-upi" class="form-control" placeholder="example@upi (Optional)">
+                            <div id="cc-details-fields" style="display: none;">
+                                <div class="form-group">
+                                    <label for="tx-card-number">Card Number <span class="required-star">*</span></label>
+                                    <div class="input-with-icon">
+                                        <ion-icon name="card-outline" class="input-icon"></ion-icon>
+                                        <input type="text" id="tx-card-number" class="form-control" placeholder="4111 1111 1111 1111" maxlength="19">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tx-cardholder">Cardholder Name <span class="required-star">*</span></label>
+                                    <div class="input-with-icon">
+                                        <ion-icon name="person-outline" class="input-icon"></ion-icon>
+                                        <input type="text" id="tx-cardholder" class="form-control" placeholder="John Doe">
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label for="tx-expiry-month">Expiry Month <span class="required-star">*</span></label>
+                                        <select id="tx-expiry-month" class="form-control">
+                                            <option value="">MM</option>
+                                            <option value="01">01</option>
+                                            <option value="02">02</option>
+                                            <option value="03">03</option>
+                                            <option value="04">04</option>
+                                            <option value="05">05</option>
+                                            <option value="06">06</option>
+                                            <option value="07">07</option>
+                                            <option value="08">08</option>
+                                            <option value="09">09</option>
+                                            <option value="10">10</option>
+                                            <option value="11">11</option>
+                                            <option value="12">12</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="tx-expiry-year">Expiry Year <span class="required-star">*</span></label>
+                                        <select id="tx-expiry-year" class="form-control">
+                                            <option value="">YY</option>
+                                            <option value="26">2026</option>
+                                            <option value="27">2027</option>
+                                            <option value="28">2028</option>
+                                            <option value="29">2029</option>
+                                            <option value="30">2030</option>
+                                            <option value="31">2031</option>
+                                            <option value="32">2032</option>
+                                            <option value="33">2033</option>
+                                            <option value="34">2034</option>
+                                            <option value="35">2035</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-top: 15px;">
+                                    <label for="tx-billing-zip">Billing ZIP Code <span class="required-star">*</span></label>
+                                    <div class="input-with-icon">
+                                        <ion-icon name="pin-outline" class="input-icon"></ion-icon>
+                                        <input type="text" id="tx-billing-zip" class="form-control" placeholder="400001" maxlength="6">
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- STEP 2: DOCUMENTS -->
                         <div class="wizard-step-panel" id="wizard-step-1" style="display: none;">
-                            <div class="form-group">
-                                <label>Shop QR Code</label>
-                                <div class="file-dropzone" id="dropzone-qr" onclick="triggerFileInput('tx-qr-upload')">
-                                    <input type="file" id="tx-qr-upload" class="file-input-hidden" accept="image/*" title="Upload Shop QR Code" onchange="handleFileSelect('qr')">
-                                    <div class="dropzone-content">
-                                        <ion-icon name="qr-code-outline" class="dropzone-icon"></ion-icon>
-                                        <p class="dropzone-text">Drag & drop QR image, or <span class="browse-link">browse</span></p>
-                                        <p class="file-info" id="file-info-qr">No file selected</p>
+                            <div id="upi-uploads-fields">
+                                <div class="form-group">
+                                    <label>Shop QR Code</label>
+                                    <div class="file-dropzone" id="dropzone-qr" onclick="triggerFileInput('tx-qr-upload')">
+                                        <input type="file" id="tx-qr-upload" class="file-input-hidden" accept="image/*" title="Upload Shop QR Code" onchange="handleFileSelect('qr')">
+                                        <div class="dropzone-content">
+                                            <ion-icon name="qr-code-outline" class="dropzone-icon"></ion-icon>
+                                            <p class="dropzone-text">Drag & drop QR image, or <span class="browse-link">browse</span></p>
+                                            <p class="file-info" id="file-info-qr">No file selected</p>
+                                        </div>
+                                        <button type="button" class="btn btn-outline scan-btn" onclick="simulateScan('QR Code'); event.stopPropagation();">
+                                            <ion-icon name="camera-outline"></ion-icon> Scan
+                                        </button>
                                     </div>
-                                    <button type="button" class="btn btn-outline scan-btn" onclick="simulateScan('QR Code'); event.stopPropagation();">
-                                        <ion-icon name="camera-outline"></ion-icon> Scan
-                                    </button>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -297,6 +375,55 @@
                                     <span class="value-readout score-badge" id="loc-risk-readout">0.50</span>
                                 </div>
                                 <input type="range" step="0.01" min="0" max="1" value="0.5" id="tx-loc-risk" class="range-slider slider-colored" oninput="updateLocRiskLabel(this.value)">
+                            </div>
+
+                            <div id="cc-security-fields" style="display: none; border-top: 1px dashed var(--card-border); padding-top: 15px; margin-bottom: 15px;">
+                                <div class="form-group">
+                                    <label>CVV Verification Result</label>
+                                    <div class="segmented-control">
+                                        <input type="radio" id="cvv-match-yes" name="cvv-match-group" value="1" checked>
+                                        <label for="cvv-match-yes" class="segmented-option">
+                                            <ion-icon name="shield-checkmark-outline"></ion-icon> CVV Match
+                                        </label>
+                                        <input type="radio" id="cvv-match-no" name="cvv-match-group" value="0">
+                                        <label for="cvv-match-no" class="segmented-option">
+                                            <ion-icon name="warning-outline"></ion-icon> CVV Mismatch
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Card Expiry Check</label>
+                                    <div class="segmented-control">
+                                        <input type="radio" id="expiry-valid-yes" name="expiry-valid-group" value="1" checked>
+                                        <label for="expiry-valid-yes" class="segmented-option">
+                                            <ion-icon name="checkmark-circle-outline"></ion-icon> Card Valid
+                                        </label>
+                                        <input type="radio" id="expiry-valid-no" name="expiry-valid-group" value="0">
+                                        <label for="expiry-valid-no" class="segmented-option">
+                                            <ion-icon name="close-circle-outline"></ion-icon> Card Expired
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Billing ZIP Verification Result</label>
+                                    <div class="segmented-control">
+                                        <input type="radio" id="zip-match-yes" name="zip-match-group" value="1" checked>
+                                        <label for="zip-match-yes" class="segmented-option">
+                                            <ion-icon name="shield-checkmark-outline"></ion-icon> ZIP Match
+                                        </label>
+                                        <input type="radio" id="zip-match-no" name="zip-match-group" value="0">
+                                        <label for="zip-match-no" class="segmented-option">
+                                            <ion-icon name="warning-outline"></ion-icon> ZIP Mismatch
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="label-row">
+                                        <label for="tx-velocity-risk">Card Transaction Velocity Risk</label>
+                                        <span class="value-readout score-badge" id="velocity-risk-readout">0.10</span>
+                                    </div>
+                                    <input type="range" step="0.01" min="0" max="1" value="0.10" id="tx-velocity-risk" class="range-slider slider-colored" oninput="updateVelocityRiskLabel(this.value)">
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -384,9 +511,10 @@
                         <table class="data-table" id="tx-table">
                             <thead>
                                 <tr>
+                                    <th>Type</th>
                                     <th>Amount</th>
-                                    <th>UTR Number</th>
-                                    <th>UPI ID</th>
+                                    <th>Reference ID</th>
+                                    <th>Identifier / Holder</th>
                                     <th>Score</th>
                                     <th>Risk</th>
                                 </tr>

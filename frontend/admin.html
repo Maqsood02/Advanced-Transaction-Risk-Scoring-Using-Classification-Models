@@ -77,175 +77,228 @@
     <div class="main-container">
 
         <!-- Top Navigation / Sections Tabs -->
-        <div class="tab-nav">
-            <button class="tab-link active" onclick="switchAdminTab('metrics')">Analytics & Models</button>
-            <button class="tab-link" onclick="switchAdminTab('users')">User Management</button>
-            <button class="tab-link" onclick="switchAdminTab('audit')">System Audit Logs</button>
+        <div class="tab-nav-wrapper">
+            <div class="tab-nav">
+                <button class="tab-link active" onclick="switchAdminTab('analytics')">
+                    <ion-icon name="pie-chart-outline"></ion-icon>
+                    <span>Visual Analytics</span>
+                </button>
+                <button class="tab-link" onclick="switchAdminTab('transactions')">
+                    <ion-icon name="receipt-outline"></ion-icon>
+                    <span>All Transactions</span>
+                </button>
+                <button class="tab-link" onclick="switchAdminTab('users')">
+                    <ion-icon name="people-outline"></ion-icon>
+                    <span>User Management</span>
+                </button>
+                <button class="tab-link" onclick="switchAdminTab('train')">
+                    <ion-icon name="hardware-chip-outline"></ion-icon>
+                    <span>Retrain Model</span>
+                </button>
+                <button class="tab-link" onclick="switchAdminTab('upload')">
+                    <ion-icon name="cloud-upload-outline"></ion-icon>
+                    <span>Dataset Upload</span>
+                </button>
+                <button class="tab-link" onclick="switchAdminTab('audit')">
+                    <ion-icon name="shield-checkmark-outline"></ion-icon>
+                    <span>System Audit Logs</span>
+                </button>
+                <button class="tab-link" onclick="switchAdminTab('reset')">
+                    <ion-icon name="settings-outline"></ion-icon>
+                    <span>Admin Reset</span>
+                </button>
+            </div>
         </div>
 
-        <!-- ================= ANALYTICS / METRICS / MODELS TAB ================= -->
-        <div id="tab-metrics" class="admin-panel-tab">
-
-            <!-- Premium Feature Category Sub-Navigation -->
-            <div class="sub-tab-nav">
-                <button class="btn btn-outline active-sub-tab" id="sub-nav-btn-visuals" onclick="switchAnalyticsSection('visuals', this)" style="padding: 10px 22px; font-weight: 600; border-radius: 10px;">
-                    <ion-icon name="stats-chart-outline"></ion-icon> Visual Analytics
-                </button>
-                <button class="btn btn-outline" id="sub-nav-btn-train" onclick="switchAnalyticsSection('train', this)" style="padding: 10px 22px; font-weight: 600; border-radius: 10px;">
-                    <ion-icon name="hardware-chip-outline"></ion-icon> Retrain Model
-                </button>
-                <button class="btn btn-outline" id="sub-nav-btn-upload" onclick="switchAnalyticsSection('upload', this)" style="padding: 10px 22px; font-weight: 600; border-radius: 10px;">
-                    <ion-icon name="cloud-upload-outline"></ion-icon> Upload & Data Mgmt
-                </button>
-                <button class="btn btn-outline" id="sub-nav-btn-reset" onclick="switchAnalyticsSection('reset', this)" style="padding: 10px 22px; font-weight: 600; border-radius: 10px;">
-                    <ion-icon name="key-outline"></ion-icon> Admin Reset
-                </button>
+        <!-- ================= VISUAL ANALYTICS TAB ================= -->
+        <div id="tab-analytics" class="admin-panel-tab animate-slide-up">
+            <!-- Segmented metrics switcher -->
+            <div class="form-group" style="max-width: 400px; margin: 0 auto 25px auto;">
+                <label style="text-align: center; display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Visualized Model Performance</label>
+                <div class="segmented-control">
+                    <input type="radio" id="metrics-upi" name="admin-metrics-group" value="upi" checked onchange="switchAdminMetricsView('upi')">
+                    <label for="metrics-upi" class="segmented-option">
+                        <ion-icon name="phone-portrait-outline"></ion-icon> UPI Model
+                    </label>
+                    <input type="radio" id="metrics-cc" name="admin-metrics-group" value="credit_card" onchange="switchAdminMetricsView('credit_card')">
+                    <label for="metrics-cc" class="segmented-option">
+                        <ion-icon name="card-outline"></ion-icon> Credit Card
+                    </label>
+                </div>
             </div>
 
-            <!-- Category SECTION: VISUALS -->
-            <div id="analytics-section-visuals" class="analytics-sub-section">
-                <!-- Dynamic metrics cards row -->
-                <div class="metrics-grid">
-                    <div class="metric-card glass">
-                        <div class="metric-card-header">
-                            <span class="metric-label">System Accuracy</span>
-                            <ion-icon name="checkmark-done-circle-outline" class="metric-icon" style="color:var(--success-color)"></ion-icon>
-                        </div>
-                        <span class="metric-value" id="sys-accuracy">76.8%</span>
+            <!-- Dynamic metrics cards row -->
+            <div class="metrics-grid">
+                <div class="metric-card glass">
+                    <div class="metric-card-header">
+                        <span class="metric-label">System Accuracy</span>
+                        <ion-icon name="checkmark-done-circle-outline" class="metric-icon" style="color:var(--success-color)"></ion-icon>
                     </div>
-                    <div class="metric-card glass">
-                        <div class="metric-card-header">
-                            <span class="metric-label">Precision & Recall</span>
-                            <ion-icon name="git-compare-outline" class="metric-icon" style="color:var(--primary-color)"></ion-icon>
-                        </div>
-                        <span class="metric-value" style="font-size:1.6rem; margin-top:5px;" id="sys-p-r">30.6% / 27.5%</span>
+                    <span class="metric-value" id="sys-accuracy">76.8%</span>
+                </div>
+                <div class="metric-card glass">
+                    <div class="metric-card-header">
+                        <span class="metric-label">Precision & Recall</span>
+                        <ion-icon name="git-compare-outline" class="metric-icon" style="color:var(--primary-color)"></ion-icon>
                     </div>
-                    <div class="metric-card glass">
-                        <div class="metric-card-header">
-                            <span class="metric-label">Model AUC Score</span>
-                            <ion-icon name="trending-up-outline" class="metric-icon" style="color:var(--accent-color)"></ion-icon>
-                        </div>
-                        <span class="metric-value" id="sys-auc">0.71</span>
+                    <span class="metric-value" style="font-size:1.6rem; margin-top:5px;" id="sys-p-r">30.6% / 27.5%</span>
+                </div>
+                <div class="metric-card glass">
+                    <div class="metric-card-header">
+                        <span class="metric-label">Model AUC Score</span>
+                        <ion-icon name="trending-up-outline" class="metric-icon" style="color:var(--accent-color)"></ion-icon>
                     </div>
-                    <div class="metric-card glass">
-                        <div class="metric-card-header">
-                            <span class="metric-label">High-Risk Predicted</span>
-                            <ion-icon name="alert-circle-outline" class="metric-icon" style="color:var(--danger-color)"></ion-icon>
-                        </div>
-                        <span class="metric-value" id="sys-fraud" style="color:var(--danger-color);">0%</span>
+                    <span class="metric-value" id="sys-auc">0.71</span>
+                </div>
+                <div class="metric-card glass">
+                    <div class="metric-card-header">
+                        <span class="metric-label">High-Risk Predicted</span>
+                        <ion-icon name="alert-circle-outline" class="metric-icon" style="color:var(--danger-color)"></ion-icon>
+                    </div>
+                    <span class="metric-value" id="sys-fraud" style="color:var(--danger-color);">0%</span>
+                </div>
+            </div>
+
+            <!-- Graphs and Chart Row Grid -->
+            <div class="admin-grid">
+                <div class="chart-card glass">
+                    <h4 class="card-title">ROC Curve & AUC Progress</h4>
+                    <div class="chart-container">
+                        <canvas id="rocCurveChart"></canvas>
                     </div>
                 </div>
-
-                <!-- Graphs and Chart Row Grid -->
-                <div class="admin-grid">
-                    <div class="chart-card glass">
-                        <h4 class="card-title">ROC Curve & AUC Progress</h4>
-                        <div class="chart-container">
-                            <canvas id="rocCurveChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-card glass">
-                        <h4 class="card-title">Fraud Risk Distribution</h4>
-                        <div class="chart-container">
-                            <canvas id="riskPieChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="admin-grid">
-                    <div class="chart-card glass">
-                        <h4 class="card-title">Feature Importance Analysis</h4>
-                        <div class="chart-container">
-                            <canvas id="importanceChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-card glass">
-                        <h4 class="card-title">Prediction Confusion Matrix</h4>
-                        <div class="chart-container">
-                            <canvas id="matrixChart"></canvas>
-                        </div>
+                <div class="chart-card glass">
+                    <h4 class="card-title">Fraud Risk Distribution</h4>
+                    <div class="chart-container">
+                        <canvas id="riskPieChart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <!-- Category SECTION: TRAIN -->
-            <div id="analytics-section-train" class="analytics-sub-section" style="display: none;">
-                <div class="dashboard-grid">
-                    <div class="form-card glass">
-                        <h3 class="card-title">
-                            <ion-icon name="hardware-chip-outline" style="color:var(--primary-color);"></ion-icon>
-                            Retrain Model
-                        </h3>
-                        <form id="train-form" onsubmit="handleTrain(event)">
-                            <div class="form-group">
-                                <label for="algorithm-selector">Select Algorithm</label>
-                                <select id="algorithm-selector" class="form-control">
-                                    <option value="rf">Random Forest Classifier</option>
-                                    <option value="lr">Logistic Regression</option>
-                                </select>
-                            </div>
-                            <button type="submit" id="btn-train" class="btn btn-primary" style="width:100%; margin-top:15px;">
-                                Train & Update Model Now
-                            </button>
-                        </form>
+            <div class="admin-grid">
+                <div class="chart-card glass">
+                    <h4 class="card-title">Feature Importance Analysis</h4>
+                    <div class="chart-container">
+                        <canvas id="importanceChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card glass">
+                    <h4 class="card-title">Prediction Confusion Matrix</h4>
+                    <div class="chart-container">
+                        <canvas id="matrixChart"></canvas>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Category SECTION: UPLOAD & WIPE -->
-            <div id="analytics-section-upload" class="analytics-sub-section" style="display: none;">
-                <div class="dashboard-grid">
-                    <div class="table-card glass" style="grid-column: 1 / -1;">
-                        <h3 class="card-title">
-                            <ion-icon name="cloud-upload-outline" style="color:var(--primary-color);"></ion-icon>
-                            Upload Trained Dataset
-                        </h3>
-                        <p style="color: var(--text-secondary); margin-bottom:15px;">
-                            Add multiple evaluation records at once using a CSV file.
-                        </p>
-                        <form id="upload-csv-form" onsubmit="handleCSVUpload(event)">
-                            <div class="form-group">
-                                <input type="file" id="csv-file-input" class="form-control" accept=".csv" required style="padding: 10px;">
-                            </div>
-                            <button type="submit" class="btn btn-primary" style="width:100%; margin-bottom:15px;">
-                                <ion-icon name="document-text-outline"></ion-icon> Upload CSV File
-                            </button>
-                        </form>
-                        <hr style="border: 0; border-top: 1px solid var(--card-border); margin-bottom:15px;">
-                        <h3 class="card-title" style="font-size:1.15rem; margin-top:15px; margin-bottom:15px;">
-                            <ion-icon name="trash-outline" style="color:var(--danger-color);"></ion-icon>
-                            Dataset Management
-                        </h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 20px;">Wipe system evaluations to start fresh.</p>
-                        <button class="btn btn-danger" onclick="wipeTransactions()" style="width:100%; padding:14px;">
-                            <ion-icon name="trash-bin-outline"></ion-icon> Delete All Transactions & Reset System
+        <!-- ================= RETRAIN MODEL TAB ================= -->
+        <div id="tab-train" class="admin-panel-tab animate-slide-up" style="display: none;">
+            <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+                <div class="form-card glass" style="max-width: 550px; width: 100%;">
+                    <h3 class="card-title">
+                        <ion-icon name="hardware-chip-outline" style="color:var(--primary-color);"></ion-icon>
+                        Retrain Model
+                    </h3>
+                    <form id="train-form" onsubmit="handleTrain(event)">
+                        <div class="form-group">
+                            <label for="algorithm-selector">Select Algorithm</label>
+                            <select id="algorithm-selector" class="form-control">
+                                <option value="rf">Random Forest Classifier</option>
+                                <option value="lr">Logistic Regression</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="btn-train" class="btn btn-primary" style="width:100%; margin-top:15px; padding: 12px;">
+                            Train & Update Model Now
                         </button>
-                    </div>
+                    </form>
                 </div>
             </div>
+        </div>
 
-            <!-- Category SECTION: ADMIN RESET -->
-            <div id="analytics-section-reset" class="analytics-sub-section" style="display: none;">
-                <div class="dashboard-grid">
-                    <div class="form-card glass" style="grid-column: 1 / -1;">
-                        <h3 class="card-title">
-                            <ion-icon name="key-outline" style="color:var(--warning-color);"></ion-icon>
-                            Account Password Reset
-                        </h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 20px;">Securely reset your administrator login credentials.</p>
-                        <form id="admin-password-reset-form" onsubmit="handleAdminPasswordReset(event)" style="max-width: 450px;">
-                            <div class="form-group">
-                                <label for="admin-new-password">New Password</label>
-                                <input type="password" id="admin-new-password" class="form-control" placeholder="Enter new strong password" required autocomplete="new-password">
+        <!-- ================= DATASET UPLOAD TAB ================= -->
+        <div id="tab-upload" class="admin-panel-tab animate-slide-up" style="display: none;">
+            <div class="dashboard-grid">
+                <!-- Column 1: Upload Card -->
+                <div class="table-card glass">
+                    <h3 class="card-title">
+                        <ion-icon name="cloud-upload-outline" style="color:var(--primary-color);"></ion-icon>
+                        Upload Trained Dataset
+                    </h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.9rem;">
+                        Import evaluation records for either UPI or Credit Card models using a CSV dataset.
+                    </p>
+                    <form id="upload-csv-form" onsubmit="handleCSVUpload(event)">
+                        <div class="form-group">
+                            <div class="file-dropzone" id="dropzone-csv" onclick="triggerFileInput('csv-file-input')">
+                                <input type="file" id="csv-file-input" class="file-input-hidden" accept=".csv" required onchange="handleCSVSelect()">
+                                <div class="dropzone-content">
+                                    <ion-icon name="document-text-outline" class="dropzone-icon"></ion-icon>
+                                    <p class="dropzone-text">Drag & drop CSV file, or <span class="browse-link">browse</span></p>
+                                    <p class="file-info" id="file-info-csv">No file selected</p>
+                                </div>
                             </div>
-                            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;">
-                                Reset Account Password
-                            </button>
-                        </form>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:15px; padding: 12px;">
+                            <ion-icon name="cloud-upload-outline"></ion-icon> Upload Dataset CSV
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Column 2: Dataset Actions -->
+                <div class="table-card glass" style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h3 class="card-title" style="color: var(--danger-color);">
+                            <ion-icon name="warning-outline"></ion-icon>
+                            System Data Actions
+                        </h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.9rem;">
+                            Danger Zone: Wiping the dataset clears all saved evaluations and audit history. This action is irreversible.
+                        </p>
+                        
+                        <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 12px; padding: 15px; margin-bottom: 25px;">
+                            <span style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--danger-color); font-size: 0.9rem;">
+                                <ion-icon name="shield-alert-outline"></ion-icon> Attention Administrator
+                            </span>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;">
+                                Wiping data will reset the accuracy graphs and prediction metrics back to base synthetic weights.
+                            </p>
+                        </div>
                     </div>
+                    
+                    <button class="btn btn-danger" onclick="wipeTransactions()" style="width: 100%; padding: 14px; font-weight: 600;">
+                        <ion-icon name="trash-bin-outline"></ion-icon> Delete All Transactions & Reset System
+                    </button>
                 </div>
             </div>
+        </div>
 
+        <!-- ================= ADMIN RESET TAB ================= -->
+        <div id="tab-reset" class="admin-panel-tab animate-slide-up" style="display: none;">
+            <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+                <div class="form-card glass" style="max-width: 550px; width: 100%;">
+                    <h3 class="card-title">
+                        <ion-icon name="key-outline" style="color:var(--warning-color);"></ion-icon>
+                        Account Credentials Reset
+                    </h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.9rem;">Securely reset your administrator login credentials (username and/or password).</p>
+                    <form id="admin-credentials-reset-form" onsubmit="handleAdminCredentialsReset(event)">
+                        <div class="form-group">
+                            <label for="admin-new-username">New Username</label>
+                            <input type="text" id="admin-new-username" class="form-control" placeholder="Enter new admin username" required autocomplete="username">
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-new-password">New Password (leave blank to keep current)</label>
+                            <div style="position: relative;">
+                                <input type="password" id="admin-new-password" class="form-control" placeholder="Enter new strong password" autocomplete="new-password" style="padding-right: 40px;">
+                                <ion-icon name="eye-outline" id="toggle-admin-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);" onclick="togglePasswordVisibility('admin-new-password', 'toggle-admin-password')"></ion-icon>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:15px; padding: 12px;">
+                            Update Admin Credentials
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <!-- ================= USER MANAGEMENT TAB ================= -->
@@ -301,6 +354,63 @@
                 </div>
             </div>
 
+        </div>
+
+        <!-- ================= ALL TRANSACTIONS TAB ================= -->
+        <div id="tab-transactions" class="admin-panel-tab" style="display: none;">
+            <div class="table-card glass" style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 class="card-title" style="margin-bottom: 5px;">
+                            <ion-icon name="list-outline" style="color:var(--primary-color);"></ion-icon>
+                            All Transactions Administration
+                        </h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 0; font-size: 0.9rem;">
+                            View, filter, and monitor all processed transactions across the entire system.
+                        </p>
+                    </div>
+                    <!-- Filtering controls block -->
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <div class="form-group" style="margin-bottom: 0; min-width: 150px;">
+                            <label for="filter-risk-level" style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block;">Risk Level</label>
+                            <select id="filter-risk-level" class="form-control" onchange="filterAdminTransactions()" style="padding: 8px 12px; font-size: 0.85rem; height: auto;">
+                                <option value="">All Risks</option>
+                                <option value="Low">Low Risk</option>
+                                <option value="Medium">Medium Risk</option>
+                                <option value="High">High Risk</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; min-width: 150px;">
+                            <label for="filter-tx-type" style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block;">Channel Type</label>
+                            <select id="filter-tx-type" class="form-control" onchange="filterAdminTransactions()" style="padding: 8px 12px; font-size: 0.85rem; height: auto;">
+                                <option value="">All Channels</option>
+                                <option value="upi">UPI</option>
+                                <option value="credit_card">Credit Card</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table" id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Identifier / Holder</th>
+                                <th>Reference ID / Card</th>
+                                <th>Score</th>
+                                <th>Risk</th>
+                                <th>Date/Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Inserted dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- ================= SYSTEM AUDIT LOGS TAB ================= -->

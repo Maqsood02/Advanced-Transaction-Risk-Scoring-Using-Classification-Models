@@ -395,136 +395,188 @@ def login():
 @token_required
 def predict_risk(current_user):
     data = request.get_json() or {}
-    
-    # ML model inputs
+    tx_type = data.get('tx_type', 'upi').strip().lower()
+    if tx_type not in ['upi', 'credit_card']:
+        tx_type = 'upi'
+        
     amount = float(data.get('amount', 0.0))
     hour_of_day = int(data.get('hour_of_day', 12))
     device_risk = int(data.get('device_risk', 0))
     location_risk = float(data.get('location_risk', 0.1))
     
-    # New fields
-    has_receipt = int(data.get('has_receipt', 1))
-    utr_valid = int(data.get('utr_valid', 1))
-    
     # Extra fields for AES encryption
     location = data.get('location', 'Unknown').strip()
     device_name = data.get('device_name', 'Unknown Device').strip()
-    utr_number = data.get('utr_number', '').strip()
-    upi_id = data.get('upi_id', '').strip()
     
-    # 1. Analyze UPI ID risk on the server side
-    upi_id_risk = 0.1  # Default baseline risk
-    if upi_id:
-        import re
-        # Validate format
-        if not re.match(r"^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$", upi_id):
-            upi_id_risk = 0.8  # Invalid format is highly risky
-        else:
-            # Check suspicious words
-            suspicious_words = ["spam", "fake", "scam", "fraud", "test", "temp", "hack", "dummy"]
-            if any(w in upi_id.lower() for w in suspicious_words):
-                upi_id_risk = 0.9
-            else:
-                # Check for random/suspicious account generation patterns
-                handle = upi_id.split("@")[0]
-                if handle.isdigit() and len(handle) >= 10:
-                    upi_id_risk = 0.7  # Long purely numeric handles are suspicious
-                elif len(handle) > 15 and re.search(r"[0-9]", handle) and re.search(r"[a-zA-Z]", handle):
-                    upi_id_risk = 0.6  # Mixed alphanumeric long handles are suspicious
-                    
-    # 2. Analyze QR Code pattern & verify matching parameters
-    qr_code_text = data.get('qr_code_text', '').strip()
-    qr_verified = int(data.get('qr_verified', 0))
-    if qr_code_text:
-        # Check if it starts with valid UPI payment prefix
-        if qr_code_text.startswith("upi://pay?") or qr_code_text.startswith("upi://pay"):
-            qr_verified = 1  # Valid UPI QR structure
-            
-            # Deep check: verify payee ID and payment amount inside the QR code
-            try:
-                from urllib.parse import urlparse, parse_qs
-                parsed = urlparse(qr_code_text)
-                query_params = parse_qs(parsed.query)
-                
-                # Check if payee address (pa) matches the user's entered UPI ID
-                qr_upi_id = query_params.get('pa', [''])[0].strip()
-                if qr_upi_id and upi_id and qr_upi_id.lower() != upi_id.lower():
-                    qr_verified = 0  # Swapped payee fraud check failed
-                    print(f"[SECURITY WARNING] Payee swap detected! QR payee={qr_upi_id}, Input={upi_id}")
-                    
-                # Check if embedded amount (am) matches the user's entered amount
-                qr_amount_str = query_params.get('am', [''])[0].strip()
-                if qr_amount_str and amount:
-                    try:
-                        qr_amount = float(qr_amount_str)
-                        if abs(qr_amount - amount) > 0.01:
-                            qr_verified = 0  # Amount alteration fraud check failed
-                            print(f"[SECURITY WARNING] Amount mismatch! QR amount={qr_amount}, Input={amount}")
-                    except ValueError:
-                        pass
-            except Exception as pe:
-                print(f"[WARNING] QR deep parsing failure: {pe}")
-    
-    try:
-        model = joblib.load(os.path.join(os.path.dirname(__file__), "model.pkl"))
-        # Format input exactly as it was trained
-        X = [[amount, hour_of_day, device_risk, location_risk, has_receipt, qr_verified, utr_valid, upi_id_risk]]
-        score = float(model.predict_proba(X)[0][1])
-    except Exception as e:
-        # Fallback in case of model error (e.g. not loaded)
-        print(f"[WARNING] Model inference failed. Using fallback calculation. Error: {e}")
-        score = 0.25 + 0.3 * (amount > 500) + 0.15 * device_risk + 0.3 * (location_risk > 0.6)
-        score += 0.2 * (has_receipt == 0) + 0.25 * (qr_verified == 0) + 0.3 * (utr_valid == 0) + 0.2 * upi_id_risk
-        score = min(max(score, 0.0), 1.0)
-        
-    # Post-inference security overrides: Mismatched payee or amount (qr_verified == 0 when QR was uploaded)
-    # is a confirmed fraud attempt (payee swap or alteration) and must be marked as High risk.
-    if qr_code_text and qr_verified == 0:
-        score = max(score, 0.85)
-        
-    # Classification logic
-    if score < 0.3:
-        level = "Low"
-    elif score <= 0.7:
-        level = "Medium"
-    else:
-        level = "High"
-        
-    # AES-256 Encryption for sensitive input data fields
     encrypted_location = encrypt_field(location)
     encrypted_device_name = encrypt_field(device_name)
-    encrypted_utr = encrypt_field(utr_number)
-    encrypted_upi = encrypt_field(upi_id)
     
-    tx = {
-        "username": current_user["username"],
-        "amount": amount,
-        "hour_of_day": hour_of_day,
-        "device_risk": device_risk,
-        "location_risk": location_risk,
-        "has_receipt": has_receipt,
-        "qr_verified": qr_verified,
-        "utr_valid": utr_valid,
-        "upi_id_risk": upi_id_risk,
-        "encrypted_location": encrypted_location,
-        "encrypted_device_name": encrypted_device_name,
-        "encrypted_utr": encrypted_utr,
-        "encrypted_upi": encrypted_upi,
-        "risk_score": round(score, 4),
-        "risk_level": level,
-        "timestamp": datetime.datetime.now().isoformat()
-    }
+    if tx_type == 'upi':
+        has_receipt = int(data.get('has_receipt', 1))
+        utr_valid = int(data.get('utr_valid', 1))
+        utr_number = data.get('utr_number', '').strip()
+        upi_id = data.get('upi_id', '').strip()
+        
+        # 1. Analyze UPI ID risk on the server side
+        upi_id_risk = 0.1  # Default baseline risk
+        if upi_id:
+            import re
+            # Validate format
+            if not re.match(r"^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$", upi_id):
+                upi_id_risk = 0.8  # Invalid format is highly risky
+            else:
+                # Check suspicious words
+                suspicious_words = ["spam", "fake", "scam", "fraud", "test", "temp", "hack", "dummy"]
+                if any(w in upi_id.lower() for w in suspicious_words):
+                    upi_id_risk = 0.9
+                else:
+                    # Check for random/suspicious account generation patterns
+                    handle = upi_id.split("@")[0]
+                    if handle.isdigit() and len(handle) >= 10:
+                        upi_id_risk = 0.7  # Long purely numeric handles are suspicious
+                    elif len(handle) > 15 and re.search(r"[0-9]", handle) and re.search(r"[a-zA-Z]", handle):
+                        upi_id_risk = 0.6  # Mixed alphanumeric long handles are suspicious
+                        
+        # 2. Analyze QR Code pattern & verify matching parameters
+        qr_code_text = data.get('qr_code_text', '').strip()
+        qr_verified = int(data.get('qr_verified', 0))
+        if qr_code_text:
+            if qr_code_text.startswith("upi://pay?") or qr_code_text.startswith("upi://pay"):
+                qr_verified = 1
+                try:
+                    from urllib.parse import urlparse, parse_qs
+                    parsed = urlparse(qr_code_text)
+                    query_params = parse_qs(parsed.query)
+                    
+                    qr_upi_id = query_params.get('pa', [''])[0].strip()
+                    if qr_upi_id and upi_id and qr_upi_id.lower() != upi_id.lower():
+                        qr_verified = 0
+                        print(f"[SECURITY WARNING] Payee swap detected! QR payee={qr_upi_id}, Input={upi_id}")
+                        
+                    qr_amount_str = query_params.get('am', [''])[0].strip()
+                    if qr_amount_str and amount:
+                        try:
+                            qr_amount = float(qr_amount_str)
+                            if abs(qr_amount - amount) > 0.01:
+                                qr_verified = 0
+                                print(f"[SECURITY WARNING] Amount mismatch! QR amount={qr_amount}, Input={amount}")
+                        except ValueError:
+                            pass
+                except Exception as pe:
+                    print(f"[WARNING] QR deep parsing failure: {pe}")
+        
+        try:
+            model = joblib.load(os.path.join(os.path.dirname(__file__), "model.pkl"))
+            X = [[amount, hour_of_day, device_risk, location_risk, has_receipt, qr_verified, utr_valid, upi_id_risk]]
+            score = float(model.predict_proba(X)[0][1])
+        except Exception as e:
+            print(f"[WARNING] Model inference failed. Using fallback calculation. Error: {e}")
+            score = 0.25 + 0.3 * (amount > 500) + 0.15 * device_risk + 0.3 * (location_risk > 0.6)
+            score += 0.2 * (has_receipt == 0) + 0.25 * (qr_verified == 0) + 0.3 * (utr_valid == 0) + 0.2 * upi_id_risk
+            score = min(max(score, 0.0), 1.0)
+            
+        if qr_code_text and qr_verified == 0:
+            score = max(score, 0.85)
+            
+        level = "Low" if score < 0.3 else "Medium" if score <= 0.7 else "High"
+            
+        encrypted_utr = encrypt_field(utr_number)
+        encrypted_upi = encrypt_field(upi_id)
+        
+        tx = {
+            "tx_type": "upi",
+            "username": current_user["username"],
+            "amount": amount,
+            "hour_of_day": hour_of_day,
+            "device_risk": device_risk,
+            "location_risk": location_risk,
+            "has_receipt": has_receipt,
+            "qr_verified": qr_verified,
+            "utr_valid": utr_valid,
+            "upi_id_risk": upi_id_risk,
+            "encrypted_location": encrypted_location,
+            "encrypted_device_name": encrypted_device_name,
+            "encrypted_utr": encrypted_utr,
+            "encrypted_upi": encrypted_upi,
+            "risk_score": round(score, 4),
+            "risk_level": level,
+            "timestamp": datetime.datetime.now().isoformat()
+        }
+        
+    else:  # credit_card
+        cvv_match = int(data.get('cvv_match', 1))
+        expiry_valid = int(data.get('expiry_valid', 1))
+        billing_zip_match = int(data.get('billing_zip_match', 1))
+        velocity_risk = float(data.get('velocity_risk', 0.1))
+        
+        cardholder_name = data.get('cardholder_name', 'Unknown Holder').strip()
+        card_number = data.get('card_number', '').strip()
+        expiry_date = data.get('expiry_date', '').strip()
+        billing_zip = data.get('billing_zip', '').strip()
+        
+        has_receipt = int(data.get('has_receipt', 0))
+        
+        try:
+            model_cc = joblib.load(os.path.join(os.path.dirname(__file__), "model_cc.pkl"))
+            X = [[amount, hour_of_day, device_risk, location_risk, cvv_match, expiry_valid, billing_zip_match, velocity_risk]]
+            score = float(model_cc.predict_proba(X)[0][1])
+        except Exception as e:
+            print(f"[WARNING] CC Model inference failed. Using fallback calculation. Error: {e}")
+            score = 0.2 + 0.3 * (amount > 1000) + 0.15 * device_risk + 0.25 * (location_risk > 0.6)
+            score += 0.25 * (cvv_match == 0) + 0.2 * (expiry_valid == 0) + 0.2 * (billing_zip_match == 0) + 0.2 * velocity_risk
+            score = min(max(score, 0.0), 1.0)
+            
+        level = "Low" if score < 0.3 else "Medium" if score <= 0.7 else "High"
+        
+        encrypted_cardholder = encrypt_field(cardholder_name)
+        encrypted_card_number = encrypt_field(card_number)
+        encrypted_expiry_date = encrypt_field(expiry_date)
+        encrypted_billing_zip = encrypt_field(billing_zip)
+        
+        tx = {
+            "tx_type": "credit_card",
+            "username": current_user["username"],
+            "amount": amount,
+            "hour_of_day": hour_of_day,
+            "device_risk": device_risk,
+            "location_risk": location_risk,
+            "cvv_match": cvv_match,
+            "expiry_valid": expiry_valid,
+            "billing_zip_match": billing_zip_match,
+            "velocity_risk": velocity_risk,
+            "has_receipt": has_receipt,
+            "encrypted_location": encrypted_location,
+            "encrypted_device_name": encrypted_device_name,
+            "encrypted_cardholder": encrypted_cardholder,
+            "encrypted_card_number": encrypted_card_number,
+            "encrypted_expiry_date": encrypted_expiry_date,
+            "encrypted_billing_zip": encrypted_billing_zip,
+            "risk_score": round(score, 4),
+            "risk_level": level,
+            "timestamp": datetime.datetime.now().isoformat()
+        }
+        
     db.add_transaction(tx)
-    db.add_audit_log(f"Inference run: risk={level}, score={round(score,4)}", current_user["username"])
+    db.add_audit_log(f"Inference run ({tx_type}): risk={level}, score={round(score,4)}", current_user["username"])
     
     # Decrypt sensitive text before returning in prediction results
     tx_return = tx.copy()
     tx_return["location"] = location
     tx_return["device_name"] = device_name
-    tx_return["utr_number"] = utr_number
-    tx_return["upi_id"] = upi_id
     
-    # Convert _id object to string if it exists to prevent JSON serialization crash
+    if tx_type == 'upi':
+        tx_return["utr_number"] = utr_number
+        tx_return["upi_id"] = upi_id
+    else:
+        tx_return["cardholder_name"] = cardholder_name
+        masked_card = card_number
+        clean_card = "".join(card_number.split())
+        if len(clean_card) >= 4:
+            masked_card = f"**** **** **** {clean_card[-4:]}"
+        tx_return["card_number"] = masked_card
+        tx_return["expiry_date"] = expiry_date
+        tx_return["billing_zip"] = billing_zip
+        
     if "_id" in tx_return:
         tx_return["_id"] = str(tx_return["_id"])
         
@@ -550,14 +602,28 @@ def get_user_transactions(current_user):
     txs = db.get_transactions(filters)
     # Decrypt sensitive info for output
     for t in txs:
+        t_type = t.get("tx_type", "upi")
+        t["tx_type"] = t_type
         t["location"] = decrypt_field(t.get("encrypted_location", ""))
         t["device_name"] = decrypt_field(t.get("encrypted_device_name", ""))
-        t["utr_number"] = decrypt_field(t.get("encrypted_utr", ""))
-        t["upi_id"] = decrypt_field(t.get("encrypted_upi", ""))
-        if "encrypted_location" in t: del t["encrypted_location"]
-        if "encrypted_device_name" in t: del t["encrypted_device_name"]
-        if "encrypted_utr" in t: del t["encrypted_utr"]
-        if "encrypted_upi" in t: del t["encrypted_upi"]
+        
+        if t_type == "upi":
+            t["utr_number"] = decrypt_field(t.get("encrypted_utr", ""))
+            t["upi_id"] = decrypt_field(t.get("encrypted_upi", ""))
+        elif t_type == "credit_card":
+            t["cardholder_name"] = decrypt_field(t.get("encrypted_cardholder", ""))
+            card_num = decrypt_field(t.get("encrypted_card_number", ""))
+            clean_card = "".join(card_num.split())
+            if len(clean_card) >= 4:
+                t["card_number"] = f"**** **** **** {clean_card[-4:]}"
+            else:
+                t["card_number"] = card_num
+            t["expiry_date"] = decrypt_field(t.get("encrypted_expiry_date", ""))
+            t["billing_zip"] = decrypt_field(t.get("encrypted_billing_zip", ""))
+            
+        for key in list(t.keys()):
+            if key.startswith("encrypted_"):
+                del t[key]
         
     return jsonify(txs), 200
 
@@ -568,30 +634,59 @@ def get_admin_metrics(current_user):
     txs = db.get_transactions({})
     total_tx = len(txs)
     
-    # Count distributions
     low = sum(1 for t in txs if t.get("risk_level") == "Low")
     med = sum(1 for t in txs if t.get("risk_level") == "Medium")
     high = sum(1 for t in txs if t.get("risk_level") == "High")
     
-    # Fraud predicted is risk level "High"
-    fraud_pct = (high / total_tx * 100) if total_tx > 0 else 0
+    # Channel specific counts
+    low_upi = sum(1 for t in txs if t.get("risk_level") == "Low" and t.get("tx_type") == "upi")
+    med_upi = sum(1 for t in txs if t.get("risk_level") == "Medium" and t.get("tx_type") == "upi")
+    high_upi = sum(1 for t in txs if t.get("risk_level") == "High" and t.get("tx_type") == "upi")
     
-    # Audit log access
+    low_cc = sum(1 for t in txs if t.get("risk_level") == "Low" and t.get("tx_type") == "credit_card")
+    med_cc = sum(1 for t in txs if t.get("risk_level") == "Medium" and t.get("tx_type") == "credit_card")
+    high_cc = sum(1 for t in txs if t.get("risk_level") == "High" and t.get("tx_type") == "credit_card")
+    
+    fraud_pct = (high / total_tx * 100) if total_tx > 0 else 0
     logs = db.get_all_audit_logs()
     
-    # Model info from train_model metrics
-    model_metrics = {
-        "accuracy": 0.7675,
-        "precision": 0.3064,
-        "recall": 0.2753,
-        "auc": 0.7064
+    import json
+    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+    metrics_path = os.path.join(data_dir, "metrics.json")
+    
+    model_metrics_upi = {
+        "accuracy": 0.6475,
+        "precision": 0.5818,
+        "recall": 0.5714,
+        "auc": 0.6913
+    }
+    model_metrics_cc = {
+        "accuracy": 0.7350,
+        "precision": 0.6559,
+        "recall": 0.4519,
+        "auc": 0.7704
     }
     
+    if os.path.exists(metrics_path):
+        try:
+            with open(metrics_path, "r") as f:
+                metrics_data = json.load(f)
+                if "upi" in metrics_data:
+                    model_metrics_upi = metrics_data["upi"]
+                if "credit_card" in metrics_data:
+                    model_metrics_cc = metrics_data["credit_card"]
+        except Exception as e:
+            print(f"[WARNING] Failed to load metrics.json: {e}")
+            
     return jsonify({
         "total_transactions": total_tx,
         "risk_distribution": {"Low": low, "Medium": med, "High": high},
+        "risk_distribution_upi": {"Low": low_upi, "Medium": med_upi, "High": high_upi},
+        "risk_distribution_cc": {"Low": low_cc, "Medium": med_cc, "High": high_cc},
         "fraud_detected_pct": round(fraud_pct, 2),
-        "model_performance": model_metrics,
+        "model_performance_upi": model_metrics_upi,
+        "model_performance_cc": model_metrics_cc,
+        "model_performance": model_metrics_upi, # Fallback for old frontend charts
         "audit_logs": logs
     }), 200
 
@@ -604,9 +699,9 @@ def admin_train_model(current_user):
         algorithm = "rf"
         
     metrics = train_model.train_and_evaluate(algorithm)
-    db.add_audit_log(f"Admin retrained model using {algorithm}", current_user["username"])
+    db.add_audit_log(f"Admin retrained models using {algorithm}", current_user["username"])
     return jsonify({
-        "message": f"Model successfully trained with {algorithm}",
+        "message": f"Models successfully trained with {algorithm}",
         "metrics": metrics
     }), 200
 
@@ -615,7 +710,6 @@ def admin_train_model(current_user):
 def admin_users(current_user):
     if request.method == 'GET':
         users = db.find_all_users()
-        # hide password hashes
         for u in users:
             if "password" in u: del u["password"]
         return jsonify(users), 200
@@ -660,7 +754,17 @@ def admin_upload_dataset(current_user):
         
     try:
         df = pd.read_csv(f)
-        required_cols = ["amount", "hour_of_day", "device_risk", "location_risk", "has_receipt", "qr_verified", "utr_valid", "upi_id_risk"]
+        
+        # Normalize column names: strip, lowercase, replace spaces/dashes with underscores
+        import re
+        df.columns = [re.sub(r'[\s\-]+', '_', str(c).strip().lower().replace("'", "").replace('"', "")) for c in df.columns]
+        
+        is_cc = "cvv_match" in df.columns
+        if is_cc:
+            required_cols = ["amount", "hour_of_day", "device_risk", "location_risk", "cvv_match", "expiry_valid", "billing_zip_match", "velocity_risk"]
+        else:
+            required_cols = ["amount", "hour_of_day", "device_risk", "location_risk", "has_receipt", "qr_verified", "utr_valid", "upi_id_risk"]
+            
         for c in required_cols:
             if c not in df.columns:
                 return jsonify({"error": f"CSV missing required column: {c}"}), 400
@@ -673,72 +777,146 @@ def admin_upload_dataset(current_user):
             hr = int(r.get("hour_of_day", 12))
             d_risk = int(r.get("device_risk", 0))
             l_risk = float(r.get("location_risk", 0.1))
-            h_rect = int(r.get("has_receipt", 1))
-            q_ver = int(r.get("qr_verified", 1))
-            u_val = int(r.get("utr_valid", 1))
-            upi_risk = float(r.get("upi_id_risk", 0.0))
             
-            try:
-                if os.environ.get("VERCEL") or not os.access(os.path.dirname(__file__), os.W_OK):
-                    m_path = "/tmp/model.pkl"
-                else:
-                    m_path = os.path.join(os.path.dirname(__file__), "model.pkl")
-
-                if os.path.exists(m_path):
-                    model = joblib.load(m_path)
-                    score = float(model.predict_proba([[amt, hr, d_risk, l_risk, h_rect, q_ver, u_val, upi_risk]])[0][1])
-                else:
+            if is_cc:
+                cvv_m = int(r.get("cvv_match", 1))
+                exp_v = int(r.get("expiry_valid", 1))
+                zip_m = int(r.get("billing_zip_match", 1))
+                vel_r = float(r.get("velocity_risk", 0.1))
+                has_rec = int(r.get("has_receipt", 0))
+                
+                try:
+                    m_path = "/tmp/model_cc.pkl" if (os.environ.get("VERCEL") or not os.access(os.path.dirname(__file__), os.W_OK)) else os.path.join(os.path.dirname(__file__), "model_cc.pkl")
+                    if os.path.exists(m_path):
+                        model_cc = joblib.load(m_path)
+                        score = float(model_cc.predict_proba([[amt, hr, d_risk, l_risk, cvv_m, exp_v, zip_m, vel_r]])[0][1])
+                    else:
+                        score = 0.2 + 0.3 * (amt > 1000) + 0.15 * d_risk + 0.25 * (l_risk > 0.6)
+                        score += 0.25 * (cvv_m == 0) + 0.2 * (exp_v == 0) + 0.2 * (zip_m == 0) + 0.2 * vel_r
+                        score = min(max(score, 0.0), 1.0)
+                except Exception:
+                    score = 0.2 + 0.3 * (amt > 1000) + 0.15 * d_risk + 0.25 * (l_risk > 0.6)
+                    score += 0.25 * (cvv_m == 0) + 0.2 * (exp_v == 0) + 0.2 * (zip_m == 0) + 0.2 * vel_r
+                    score = min(max(score, 0.0), 1.0)
+                    
+                level = "Low" if score < 0.3 else "Medium" if score <= 0.7 else "High"
+                
+                db.add_transaction({
+                    "tx_type": "credit_card",
+                    "username": current_user["username"],
+                    "amount": amt,
+                    "hour_of_day": hr,
+                    "device_risk": d_risk,
+                    "location_risk": l_risk,
+                    "cvv_match": cvv_m,
+                    "expiry_valid": exp_v,
+                    "billing_zip_match": zip_m,
+                    "velocity_risk": vel_r,
+                    "has_receipt": has_rec,
+                    "encrypted_location": loc,
+                    "encrypted_device_name": dev,
+                    "encrypted_cardholder": encrypt_field(str(r.get("cardholder_name", "Unknown Holder"))),
+                    "encrypted_card_number": encrypt_field(str(r.get("card_number", "4111111111111111"))),
+                    "encrypted_expiry_date": encrypt_field(str(r.get("expiry_date", "12/29"))),
+                    "encrypted_billing_zip": encrypt_field(str(r.get("billing_zip", "400001"))),
+                    "risk_score": round(score, 4),
+                    "risk_level": level,
+                    "timestamp": datetime.datetime.now().isoformat()
+                })
+            else:
+                h_rect = int(r.get("has_receipt", 1))
+                q_ver = int(r.get("qr_verified", 1))
+                u_val = int(r.get("utr_valid", 1))
+                upi_risk = float(r.get("upi_id_risk", 0.0))
+                
+                try:
+                    m_path = "/tmp/model.pkl" if (os.environ.get("VERCEL") or not os.access(os.path.dirname(__file__), os.W_OK)) else os.path.join(os.path.dirname(__file__), "model.pkl")
+                    if os.path.exists(m_path):
+                        model = joblib.load(m_path)
+                        score = float(model.predict_proba([[amt, hr, d_risk, l_risk, h_rect, q_ver, u_val, upi_risk]])[0][1])
+                    else:
+                        score = 0.25 + 0.3 * (amt > 500) + 0.15 * d_risk + 0.3 * (l_risk > 0.6)
+                        score += 0.2 * (h_rect == 0) + 0.25 * (q_ver == 0) + 0.3 * (u_val == 0) + 0.2 * upi_risk
+                        score = min(max(score, 0.0), 1.0)
+                except Exception:
                     score = 0.25 + 0.3 * (amt > 500) + 0.15 * d_risk + 0.3 * (l_risk > 0.6)
                     score += 0.2 * (h_rect == 0) + 0.25 * (q_ver == 0) + 0.3 * (u_val == 0) + 0.2 * upi_risk
                     score = min(max(score, 0.0), 1.0)
-            except Exception:
-                score = 0.25 + 0.3 * (amt > 500) + 0.15 * d_risk + 0.3 * (l_risk > 0.6)
-                score += 0.2 * (h_rect == 0) + 0.25 * (q_ver == 0) + 0.3 * (u_val == 0) + 0.2 * upi_risk
-                score = min(max(score, 0.0), 1.0)
+                    
+                level = "Low" if score < 0.3 else "Medium" if score <= 0.7 else "High"
                 
-            level = "Low" if score < 0.3 else "Medium" if score <= 0.7 else "High"
-            
-            db.add_transaction({
-                "username": current_user["username"],
-                "amount": amt,
-                "hour_of_day": hr,
-                "device_risk": d_risk,
-                "location_risk": l_risk,
-                "has_receipt": h_rect,
-                "qr_verified": q_ver,
-                "utr_valid": u_val,
-                "upi_id_risk": upi_risk,
-                "encrypted_location": loc,
-                "encrypted_device_name": dev,
-                "encrypted_utr": encrypt_field("Unknown UTR"),
-                "encrypted_upi": encrypt_field("Unknown UPI"),
-                "risk_score": round(score, 4),
-                "risk_level": level,
-                "timestamp": datetime.datetime.now().isoformat()
-            })
-            
+                db.add_transaction({
+                    "tx_type": "upi",
+                    "username": current_user["username"],
+                    "amount": amt,
+                    "hour_of_day": hr,
+                    "device_risk": d_risk,
+                    "location_risk": l_risk,
+                    "has_receipt": h_rect,
+                    "qr_verified": q_ver,
+                    "utr_valid": u_val,
+                    "upi_id_risk": upi_risk,
+                    "encrypted_location": loc,
+                    "encrypted_device_name": dev,
+                    "encrypted_utr": encrypt_field(str(r.get("utr_number", "Unknown UTR"))),
+                    "encrypted_upi": encrypt_field(str(r.get("upi_id", "Unknown UPI"))),
+                    "risk_score": round(score, 4),
+                    "risk_level": level,
+                    "timestamp": datetime.datetime.now().isoformat()
+                })
+                
         db.add_audit_log(f"Admin uploaded trained dataset CSV with {len(df)} transactions", current_user["username"])
         return jsonify({"message": f"Dataset uploaded and {len(df)} transactions processed successfully"}), 200
     except Exception as e:
         return jsonify({"error": f"Processing error: {str(e)}"}), 500
 
-@app.route('/api/admin/password/reset', methods=['POST'])
+@app.route('/api/admin/credentials/reset', methods=['POST'])
 @admin_required
-def admin_password_reset(current_user):
+def admin_credentials_reset(current_user):
     data = request.get_json() or {}
+    new_username = data.get("username", "").strip()
     new_password = data.get("password", "").strip()
-    if not new_password:
-        return jsonify({"error": "New password is required"}), 400
+    
+    if not new_username and not new_password:
+        return jsonify({"error": "Username or password is required"}), 400
         
-    hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    
     user_data = db.find_user_by_username(current_user["username"])
-    user_data["password"] = hashed
-    db.delete_user_by_username(current_user["username"])
-    db.add_user(user_data)
+    if not user_data:
+        return jsonify({"error": "User not found"}), 404
+        
+    old_username = current_user["username"]
+    updated_username = old_username
     
-    db.add_audit_log("Admin successfully reset their account password", current_user["username"])
-    return jsonify({"message": "Password updated successfully"}), 200
+    if new_username and new_username != old_username:
+        existing = db.find_user_by_username(new_username)
+        if existing:
+            return jsonify({"error": "Username already exists"}), 400
+            
+        user_data["username"] = new_username
+        db.delete_user_by_username(old_username)
+        db.add_user(user_data)
+        updated_username = new_username
+        db.add_audit_log(f"Admin renamed account from {old_username} to {new_username}", new_username)
+        
+    if new_password:
+        user_data = db.find_user_by_username(updated_username)
+        hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        user_data["password"] = hashed
+        db.delete_user_by_username(updated_username)
+        db.add_user(user_data)
+        db.add_audit_log("Admin successfully reset password", updated_username)
+        
+    token = jwt.encode({
+        "username": updated_username,
+        "role": "admin",
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+    }, JWT_SECRET, algorithm="HS256")
+    
+    return jsonify({
+        "message": "Account credentials updated successfully",
+        "username": updated_username,
+        "token": token
+    }), 200
 
 @app.route('/api/admin/transactions/clear', methods=['POST'])
 @admin_required

@@ -431,53 +431,83 @@ header {
     100% { transform: translateY(0); opacity: 1; }
 }
 
+.tab-nav-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 35px;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+}
+
+.tab-nav-wrapper::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}
+
 .tab-nav {
     display: flex;
-    gap: 12px;
-    margin-bottom: 30px;
-    border-bottom: 2px solid var(--card-border);
-    padding-bottom: 2px;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 4px;
+    border-radius: 100px;
+    border: 1px solid var(--card-border);
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);
+    align-items: center;
+    width: max-content;
+    flex-shrink: 0;
 }
 
 .tab-link {
     background: transparent;
     color: var(--text-secondary);
     font-family: 'Outfit', sans-serif;
-    font-size: 1.05rem;
+    font-size: 0.86rem;
     font-weight: 600;
-    padding: 12px 24px;
+    padding: 8px 14px;
     border: none;
+    border-radius: 100px;
     cursor: pointer;
-    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+
+.tab-link ion-icon {
+    font-size: 1.15rem;
+    transition: transform 0.25s ease;
 }
 
 .tab-link:hover {
     color: var(--text-primary);
+    transform: translateY(-1px);
 }
 
-.tab-link::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: var(--primary-color);
-    border-radius: 3px 3px 0 0;
-    transform: scaleX(0);
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+.tab-link:hover ion-icon {
+    transform: scale(1.1);
 }
 
 .tab-link.active {
-    color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.2);
 }
 
-.tab-link.active::after {
-    transform: scaleX(1);
+.tab-link.active ion-icon {
+    color: #ffffff;
 }
 
 @media (max-width: 768px) {
+    .tab-nav-wrapper {
+        justify-content: flex-start !important;
+        padding-left: 10px;
+        padding-right: 10px;
+        margin-bottom: 20px;
+    }
     header {
         flex-direction: column !important;
         align-items: stretch !important;
@@ -928,6 +958,79 @@ header {
 .wizard-step-panel.active {
     display: block;
     animation: slideFadeIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Premium Site-wide Animations */
+
+/* 1. Subtle upward fade-in animation for general panels/cards */
+@keyframes slideUpFade {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-up {
+    animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 2. Soft fade-in animation */
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* 3. Breathing pulse glow animation for badges and main CTA buttons */
+@keyframes pulseGlow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    }
+}
+
+.pulse-glow {
+    animation: pulseGlow 2s infinite;
+}
+
+/* Apply fade-in and slide-up transitions to tabs, subtabs, and main wrapper panels */
+.admin-panel-tab, .analytics-sub-section, .auth-wrapper, #dashboard-panel {
+    animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Smooth active button transition scaling */
+.btn, .segmented-option, .tab-link, .file-dropzone, .wizard-step-panel {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn:hover {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Apply smooth hover adjustments to tables and segments */
+.data-table tbody tr {
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.data-table tbody tr:hover {
+    transform: scale(1.002);
+    box-shadow: inset 3px 0 0 0 var(--primary-color);
 }
 
 @media (max-width: 768px) {
